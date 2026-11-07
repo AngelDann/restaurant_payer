@@ -1,0 +1,6 @@
+# Copy to docker-compose.override.yml for local-only tweaks (not committed).
+# Example: extra ports, debugger, or a one-off service.
+#
+# services:
+#   web:
+#     command: python manage.py runserver 0.0.0.0:8000

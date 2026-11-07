@@ -1,0 +1,9 @@
+.htmx-indicator {
+  visibility: hidden;
+  margin-right: 0.5rem;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+  visibility: visible;
+}

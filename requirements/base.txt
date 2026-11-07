@@ -1,0 +1,40 @@
+# Runtime / framework
+Django>=6.0,<7
+asgiref>=3.8
+daphne>=4.0
+
+# Config
+python-decouple>=3.8
+
+# Tiempo real y tareas
+channels>=4.0,<5
+channels-redis>=4.2
+celery[redis]>=5.3,<6
+redis>=5.0
+
+# DB
+psycopg[binary]>=3.1,<4
+
+# UI: Bootstrap 5.3 desde paquete (sin CDN)
+django-bootstrap5>=24.3
+django-htmx>=1.21.0
+
+# Archivos / estáticos / imágenes
+django-storages[s3]>=1.14
+boto3>=1.34
+whitenoise[brotli]>=6.6
+Pillow>=10.0
+
+# Integraciones producto — pydantic-ai completo (no slim)
+pydantic-ai[openai]>=0.0.14
+tiktoken>=0.7
+requests>=2.31
+stripe>=10.0
+django-ckeditor>=6.7
+Markdown>=3.6
+django-simple-captcha>=0.6.0
+
+# Tests (Channels in-memory en pytest)
+pytest>=8.0
+pytest-django>=4.8
+pytest-asyncio>=0.24

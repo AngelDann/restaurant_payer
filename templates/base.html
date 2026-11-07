@@ -1,0 +1,33 @@
+{% load django_bootstrap5 %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Landing Page Creator{% endblock %}</title>
+  {% bootstrap_css %}
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="d-flex flex-column min-vh-100">
+  <header class="border-bottom py-3 mb-4">
+    <div class="container d-flex align-items-center justify-content-between">
+      <a class="navbar-brand fw-semibold text-decoration-none text-body" href="{% url 'home' %}">Landing Page Creator</a>
+      <nav class="d-flex gap-3">
+        <a href="{% url 'home' %}">Inicio</a>
+        <a href="{% url 'ai_chat_index' %}">Chat</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container flex-grow-1 pb-5">
+    <div id="htmx-indicator" class="htmx-indicator spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true"></div>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="border-top py-3 mt-auto text-muted small">
+    <div class="container">&copy; {% now "Y" %} Landing Page Creator</div>
+  </footer>
+  {% bootstrap_javascript %}
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+</body>
+</html>

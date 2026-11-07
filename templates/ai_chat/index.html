@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Chat · {{ block.super }}{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">HTMX + partial</h1>
+<button type="button"
+        class="btn btn-primary"
+        hx-get="{% url 'ai_chat_partial_ping' %}"
+        hx-target="#partial-target"
+        hx-indicator="#htmx-indicator">
+  Cargar partial
+</button>
+<div id="partial-target" class="mt-3 p-3 border rounded bg-light"></div>
+<hr class="my-4">
+<h2 class="h5">WebSocket demo</h2>
+<p class="small text-muted">Ruta: <code>ws/chat/</code> (consumer echo).</p>
+{% endblock %}

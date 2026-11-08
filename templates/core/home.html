@@ -1,11 +1,146 @@
 {% extends "base.html" %}
-{% block title %}Inicio · {{ block.super }}{% endblock %}
+{% load static %}
+{% block title %}PlavPay – Que tus clientes paguen desde la mesa{% endblock %}
+
 {% block content %}
-<div class="row">
-  <div class="col-lg-8">
-    <h1 class="display-6 mb-3">Base del proyecto</h1>
-    <p class="lead">Django ASGI, Channels, Celery, Redis, Postgres y plantillas con django-bootstrap5 + HTMX local.</p>
-    <p class="text-muted">Documentación para desarrolladores: <code>docs/developers/README.md</code></p>
-  </div>
+<div class="container">
+  <section class="hero">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <h1>Que tus clientes paguen desde la mesa</h1>
+        <p class="lede">
+          Cada mesa tiene un código QR. El comensal lo escanea, ve su cuenta, la divide como quiera y paga con Apple Pay, Google Pay o tarjeta. No descarga nada y no espera al mesero con la terminal.
+        </p>
+
+        <div class="d-flex flex-wrap gap-2 mb-4">
+          {% if user.is_authenticated %}
+            <a href="{% url 'dashboard_home' %}" class="btn btn-brand btn-lg">
+              <i class="bi bi-grid-1x2-fill" aria-hidden="true"></i><span>Ir a mi panel</span>
+            </a>
+          {% else %}
+            <a href="{% url 'register' %}" class="btn btn-brand btn-lg">
+              <i class="bi bi-shop" aria-hidden="true"></i><span>Registrar mi restaurante</span>
+            </a>
+            <a href="{% url 'login' %}" class="btn btn-soft btn-lg">
+              <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Iniciar sesión</span>
+            </a>
+          {% endif %}
+        </div>
+
+        <ul class="hero-facts list-unstyled text-muted mb-0">
+          <li class="d-flex align-items-center gap-2"><i class="bi bi-phone text-danger" aria-hidden="true"></i>Funciona en el navegador</li>
+          <li class="d-flex align-items-center gap-2"><i class="bi bi-bank text-danger" aria-hidden="true"></i>Depósito directo con Stripe Connect</li>
+          <li class="d-flex align-items-center gap-2"><i class="bi bi-pie-chart text-danger" aria-hidden="true"></i>Cuenta dividida a su manera</li>
+        </ul>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="hero-stage" data-demo-stage>
+          <div class="demo-phone" data-demo-phone>
+            <div class="demo-screen">
+              <div class="demo-top">
+                <span class="where"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i>Mesa N°1, Terraza</span>
+                <span class="chip chip--ok chip--dot">Cuenta abierta</span>
+              </div>
+              <div class="demo-lines num">
+                <div><span>3 Tacos al pastor</span><span>$135.00</span></div>
+                <div><span>1 Mole poblano</span><span>$215.00</span></div>
+                <div><span>2 Aguas frescas</span><span>$100.00</span></div>
+                <div class="fw-bold pt-1"><span>Subtotal</span><span>$450.00</span></div>
+              </div>
+
+              <fieldset>
+                <legend class="demo-label">¿Cuánto dejas de propina?</legend>
+                <div class="tip-chips">
+                  <input type="radio" name="demo-tip" id="tip-0" value="0"><label for="tip-0">Ninguna</label>
+                  <input type="radio" name="demo-tip" id="tip-10" value="10" checked><label for="tip-10">10%</label>
+                  <input type="radio" name="demo-tip" id="tip-15" value="15"><label for="tip-15">15%</label>
+                  <input type="radio" name="demo-tip" id="tip-20" value="20"><label for="tip-20">20%</label>
+                </div>
+              </fieldset>
+
+              <div class="d-flex justify-content-between text-muted small num mb-1">
+                <span>Propina</span><span data-demo-tip>$45.00</span>
+              </div>
+              <div class="demo-total">
+                <span class="fw-bold">Total</span>
+                <strong data-demo-total>$495.00</strong>
+              </div>
+              <div class="demo-pay" aria-hidden="true"><i class="bi bi-apple"></i>Pagar con Apple Pay</div>
+              <p class="demo-hint">Demostración: toca una propina para ver cómo cambia el total.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="flujo-titulo" class="pt-3">
+    <h2 id="flujo-titulo">Del QR al pago en cuatro pasos</h2>
+    <p class="text-muted mb-0 section-lede">Así vive la experiencia un comensal, desde que se sienta hasta que se va.</p>
+
+    <ol class="flow">
+      <li>
+        <span class="step-icon"><i class="bi bi-qr-code-scan" aria-hidden="true"></i></span>
+        <h3>Escanea el QR de la mesa</h3>
+        <p>Cada mesa tiene un código único. Abre en Safari o Chrome, sin instalar nada.</p>
+      </li>
+      <li>
+        <span class="step-icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span>
+        <h3>Divide y elige propina</h3>
+        <p>Paga todo, en partes iguales o solo sus platillos, con propina sugerida de 10%, 15% o 20%.</p>
+      </li>
+      <li>
+        <span class="step-icon"><i class="bi bi-wallet2" aria-hidden="true"></i></span>
+        <h3>Paga desde su teléfono</h3>
+        <p>Apple Pay, Google Pay o tarjeta con Stripe. El dinero llega a la cuenta bancaria del restaurante.</p>
+      </li>
+      <li>
+        <span class="step-icon"><i class="bi bi-star-half" aria-hidden="true"></i></span>
+        <h3>Califica su visita</h3>
+        <p>Valora los platillos y, si dio 4 o 5 estrellas, le invitamos a reseñar en Google Maps.</p>
+      </li>
+    </ol>
+  </section>
+
+  <section class="split-band" aria-label="Beneficios">
+    <div class="band-dark">
+      <i class="bi bi-fire bg-mark" aria-hidden="true"></i>
+      <h2>La cuenta deja de ser un cuello de botella</h2>
+      <p>En hora pico, esperar al mesero con la terminal retrasa a todos. Aquí cada comensal resuelve su parte sin levantar la mano.</p>
+      <div class="perk">
+        <i class="bi bi-stopwatch" aria-hidden="true"></i>
+        <div><strong>Mesas libres más rápido</strong><span>El comensal paga cuando termina, sin esperar a que le traigan la cuenta.</span></div>
+      </div>
+      <div class="perk">
+        <i class="bi bi-cash-coin" aria-hidden="true"></i>
+        <div><strong>Propinas claras</strong><span>Montos sugeridos y calculados al instante, visibles para quien paga.</span></div>
+      </div>
+      <div class="perk">
+        <i class="bi bi-shield-check" aria-hidden="true"></i>
+        <div><strong>La tarjeta no sale de su mano</strong><span>Los pagos se tokenizan con Apple Pay, Google Pay y Stripe.</span></div>
+      </div>
+    </div>
+
+    <div class="band-light">
+      <h2>Lo que ve tu cliente</h2>
+      <div class="shortcut is-static">
+        <span class="lead-icon"><i class="bi bi-journal-richtext" aria-hidden="true"></i></span>
+        <span class="txt">Tu menú digital<small>Platillos con foto, porción y precio, solo los disponibles.</small></span>
+      </div>
+      <div class="shortcut is-static">
+        <span class="lead-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+        <span class="txt">Su cuenta en vivo<small>Se actualiza cuando el mesero agrega algo a la comanda.</small></span>
+      </div>
+      <div class="shortcut is-static">
+        <span class="lead-icon"><i class="bi bi-chat-heart" aria-hidden="true"></i></span>
+        <span class="txt">Su opinión<small>Calificación por platillo y reseña general al terminar.</small></span>
+      </div>
+    </div>
+  </section>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/home.js' %}" defer></script>
 {% endblock %}

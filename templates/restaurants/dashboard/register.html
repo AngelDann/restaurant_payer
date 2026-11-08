@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Registrar restaurante – PlavPay{% endblock %}
+
+{% block content %}
+<div class="auth">
+  <aside class="auth-aside">
+    <i class="bi bi-egg-fried bg-mark" aria-hidden="true"></i>
+    <div>
+      <h2>Abre tu cuenta y pon el primer QR en una mesa</h2>
+      <p>Crea tu usuario, registra tu restaurante y conecta Stripe para recibir los pagos en tu cuenta bancaria.</p>
+    </div>
+    <div class="ticket" aria-hidden="true">
+      <div class="row-l"><b>Mesa N°1</b><span>Terraza</span></div>
+      <div class="row-l"><span>Escanea para ver</span><span></span></div>
+      <div class="row-l"><span>tu cuenta y pagar</span><span></span></div>
+      <div class="row-l sum"><span>Apple Pay, Google Pay</span><span>o tarjeta</span></div>
+    </div>
+  </aside>
+
+  <section class="auth-main" aria-labelledby="register-title">
+    <div class="auth-card">
+      <h1 id="register-title">Registra tu restaurante</h1>
+      <p class="sub">Primero crea tu cuenta de propietario. Después agregas el restaurante.</p>
+
+      {% if form.errors %}
+        <div class="notice notice--error" role="alert">
+          <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+          <div>
+            <strong>Revisa estos datos:</strong>
+            <ul>
+              {% for field in form %}{% for error in field.errors %}<li>{{ error }}</li>{% endfor %}{% endfor %}
+              {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+            </ul>
+          </div>
+        </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'register' %}" novalidate>
+        {% csrf_token %}
+
+        <div class="mb-3">
+          <label class="form-label" for="{{ form.username.id_for_label }}">Nombre de usuario</label>
+          <div class="field-icon">
+            <i class="bi bi-person" aria-hidden="true"></i>
+            <input type="text" name="username" id="{{ form.username.id_for_label }}" class="form-control" placeholder="chef_mario" autocomplete="username" required value="{{ form.username.value|default:'' }}">
+          </div>
+          <div class="form-text">Hasta 150 caracteres: letras, números y @ . + - _</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="id_password1">Contraseña</label>
+          <div class="field-icon has-action">
+            <i class="bi bi-lock" aria-hidden="true"></i>
+            <input type="password" name="password1" id="id_password1" class="form-control" autocomplete="new-password" required>
+            <button type="button" class="field-action" data-toggle-password="#id_password1" aria-label="Mostrar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+          <div class="form-text">Mínimo 8 caracteres y no solo números.</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="id_password2">Confirmar contraseña</label>
+          <div class="field-icon has-action">
+            <i class="bi bi-lock-fill" aria-hidden="true"></i>
+            <input type="password" name="password2" id="id_password2" class="form-control" autocomplete="new-password" required>
+            <button type="button" class="field-action" data-toggle-password="#id_password2" aria-label="Mostrar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-brand btn-lg w-100">
+          <i class="bi bi-person-check" aria-hidden="true"></i><span>Crear cuenta</span>
+        </button>
+      </form>
+
+      <p class="auth-alt mb-0">
+        ¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión</a>
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}

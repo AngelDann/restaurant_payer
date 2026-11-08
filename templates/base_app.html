@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% comment %}
+  Layout del panel: barra lateral + barra superior.
+  Bloques: title, crumbs, topbar_actions, content, extra_head, extra_js.
+{% endcomment %}
+
+{% block body_class %}app-body{% endblock %}
+
+{% block body %}
+{% with current=request.resolver_match.url_name %}
+<div class="app-shell">
+  <aside class="offcanvas-lg offcanvas-start sidebar-canvas" tabindex="-1" id="sidebar" aria-label="Navegación principal">
+    <div class="sidebar">
+      <div class="d-flex align-items-start justify-content-between">
+        <a class="brand" href="{% url 'dashboard_home' %}" aria-label="PlavPay, mis restaurantes">
+          <span class="brand-mark"><i class="bi bi-qr-code-scan" aria-hidden="true"></i></span>
+          PlavPay
+        </a>
+        <button type="button" class="btn-close d-lg-none mt-2" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Cerrar menú"></button>
+      </div>
+
+      <nav aria-label="Secciones">
+        <a class="side-link {% if current == 'dashboard_home' %}active{% endif %}" href="{% url 'dashboard_home' %}" {% if current == 'dashboard_home' %}aria-current="page"{% endif %}>
+          <i class="bi bi-shop-window" aria-hidden="true"></i>Mis restaurantes
+        </a>
+
+        {% if restaurant %}
+          <div class="side-group">
+            <div class="side-restaurant">
+              {% if restaurant.logo_url %}
+                <img class="avatar" src="{{ restaurant.logo_url }}" alt="" width="38" height="38">
+              {% else %}
+                <span class="avatar"><i class="bi bi-shop" aria-hidden="true"></i></span>
+              {% endif %}
+              <div class="min-w-0">
+                <strong class="text-truncate d-block">{{ restaurant.name }}</strong>
+                <span>Restaurante activo</span>
+              </div>
+            </div>
+            <a class="side-link {% if current == 'restaurant_dashboard' or current == 'restaurant_table_pos' or current == 'restaurant_table_qr' %}active{% endif %}" href="{% url 'restaurant_dashboard' slug=restaurant.slug %}">
+              <i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>Mesas y cobros
+            </a>
+            <a class="side-link {% if current == 'restaurant_menu_manage' %}active{% endif %}" href="{% url 'restaurant_menu_manage' slug=restaurant.slug %}">
+              <i class="bi bi-journal-richtext" aria-hidden="true"></i>Menú
+            </a>
+            <a class="side-link" href="{% url 'stripe_connect_onboarding' slug=restaurant.slug %}">
+              <i class="bi bi-bank2" aria-hidden="true"></i>Cobros con Stripe
+            </a>
+          </div>
+        {% endif %}
+      </nav>
+
+      <div class="side-footer">
+        <a class="side-link" href="{% url 'home' %}"><i class="bi bi-house-door" aria-hidden="true"></i>Sitio público</a>
+        <a class="side-link" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>Cerrar sesión</a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="app-topbar">
+      <button class="btn btn-soft btn-icon d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebar" aria-controls="sidebar" aria-label="Abrir menú">
+        <i class="bi bi-list fs-5" aria-hidden="true"></i>
+      </button>
+      <div class="crumbs text-truncate">{% block crumbs %}{% endblock %}</div>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        {% block topbar_actions %}{% endblock %}
+        <div class="dropdown">
+          <button class="btn btn-soft btn-sm d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <span class="avatar avatar-sm" aria-hidden="true">{{ user.username|slice:":1"|upper }}</span>
+            <span class="d-none d-sm-inline">{{ user.username }}</span>
+            <i class="bi bi-chevron-down small" aria-hidden="true"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0">
+            <li><a class="dropdown-item" href="{% url 'dashboard_home' %}"><i class="bi bi-shop-window me-2" aria-hidden="true"></i>Mis restaurantes</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="{% url 'logout' %}"><i class="bi bi-box-arrow-right me-2" aria-hidden="true"></i>Cerrar sesión</a></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <main id="contenido" class="app-content">
+      {% include "partials/_messages.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}

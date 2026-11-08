@@ -1,0 +1,286 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static l10n %}
+
+{% block title %}Cuenta · {{ restaurant.name }} · Mesa N°{{ table.number }}{% endblock %}
+
+{% block content %}
+<header class="g-header">
+  <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Volver al inicio de la mesa">
+    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+  </a>
+  <div class="titles">
+    <h1>{{ restaurant.name }}</h1>
+    <div class="sub">Mesa N°{{ table.number }}</div>
+  </div>
+  <a href="{% url 'guest_table_menu' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Abrir el menú">
+    <i class="bi bi-journal-richtext" aria-hidden="true"></i>
+  </a>
+</header>
+
+<main id="g-main" class="guest-bill-container">
+  {% if not order or order.items.count == 0 %}
+    <div class="guest-empty">
+      <div class="icon"><i class="bi bi-receipt" aria-hidden="true"></i></div>
+      <h2>No hay cuenta abierta</h2>
+      <p>Esta mesa aún no tiene platillos cargados a su orden.</p>
+      <a href="{% url 'guest_table_menu' restaurant.slug table.number %}" class="guest-floating-action-btn is-center">
+        <i class="bi bi-journal-richtext" aria-hidden="true"></i><span>Ver menú para ordenar</span>
+      </a>
+    </div>
+  {% else %}
+    <div class="guest-bill-header">
+      <div class="guest-bill-table-label">Total de la cuenta</div>
+      <div class="guest-bill-total-hero">
+        ${{ order.amount_remaining|unlocalize }}<span class="guest-bill-currency">MXN</span>
+      </div>
+      <div class="guest-bill-note">
+        {% if order.waiter_name %}Mesero: {{ order.waiter_name }}, {% endif %}saldo pendiente en Mesa N°{{ table.number }}
+      </div>
+    </div>
+
+    <form id="bill-checkout-form" method="post" action="{% url 'guest_bill_checkout' restaurant.slug table.number %}">
+      {% csrf_token %}
+
+      <div id="bill-calculator-container">
+        {% include "restaurants/guest/_bill_calculator.html" %}
+      </div>
+
+      <input type="hidden" name="payment_method" id="selected-payment-method" value="card">
+
+      {% if not restaurant.can_accept_stripe_split or not stripe_public_key %}
+        <div class="guest-notice guest-payment-disabled-alert" role="status">
+          <i class="bi bi-info-circle-fill" aria-hidden="true"></i>
+          <span>El pago en línea no está disponible en este momento. Por favor solicita la terminal a tu mesero.</span>
+        </div>
+      {% endif %}
+
+      <div class="guest-pay-buttons">
+        <button type="button"
+                data-method="apple_pay"
+                class="btn-apple-pay payment-trigger-btn"
+                id="apple-pay-btn"
+                {% if not restaurant.can_accept_stripe_split or not stripe_public_key %}disabled{% endif %}>
+          <i class="bi bi-apple" aria-hidden="true"></i>
+          <span>Pagar con Apple Pay</span>
+        </button>
+
+        <button type="button"
+                data-method="google_pay"
+                class="btn-google-pay payment-trigger-btn"
+                id="google-pay-btn"
+                {% if not restaurant.can_accept_stripe_split or not stripe_public_key %}disabled{% endif %}>
+          <i class="bi bi-google" aria-hidden="true"></i>
+          <span>Pagar con Google Pay</span>
+        </button>
+
+        <button type="button"
+                data-method="card"
+                class="btn-card-pay payment-trigger-btn"
+                id="card-pay-btn"
+                {% if not restaurant.can_accept_stripe_split or not stripe_public_key %}disabled{% endif %}>
+          <i class="bi bi-credit-card-2-front" aria-hidden="true"></i>
+          <span>Pagar con tarjeta</span>
+        </button>
+      </div>
+    </form>
+
+    <div id="stripe-payment-modal" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="stripe-sheet-title">
+      <div id="stripe-modal-card" class="sheet">
+        <div class="sheet-head">
+          <div>
+            <h2 id="stripe-sheet-title">Finalizar pago</h2>
+            <p><i class="bi bi-shield-lock-fill" aria-hidden="true"></i>Procesado de forma segura con Stripe</p>
+          </div>
+          <button type="button" id="close-stripe-modal" class="g-icon-btn" aria-label="Cerrar"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </div>
+
+        <div id="stripe-modal-spinner" class="sheet-loading" hidden>
+          <div class="sheet-spinner" aria-hidden="true"></div>
+          <p>Preparando pago seguro</p>
+        </div>
+
+        <div id="stripe-error-message" class="sheet-error" role="alert" hidden></div>
+
+        <div id="stripe-express-checkout-element"></div>
+        <div id="stripe-payment-element"></div>
+
+        <button type="button" id="stripe-submit-button" class="btn-card-pay sheet-submit" hidden>
+          <span id="stripe-button-text">Confirmar y pagar</span>
+          <span id="stripe-button-spinner" hidden>Procesando pago</span>
+        </button>
+      </div>
+    </div>
+
+    {% if stripe_public_key and restaurant.can_accept_stripe_split %}
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+      (function() {
+        const stripeKey = "{{ stripe_public_key }}";
+        let stripe = null;
+        let elements = null;
+        let currentReturnUrl = "";
+        let isProcessing = false;
+
+        function getStripeInstance() {
+          if (!stripe && window.Stripe && stripeKey) {
+            stripe = window.Stripe(stripeKey);
+          }
+          return stripe;
+        }
+
+        const modal = document.getElementById("stripe-payment-modal");
+        const spinner = document.getElementById("stripe-modal-spinner");
+        const errorBox = document.getElementById("stripe-error-message");
+        const submitBtn = document.getElementById("stripe-submit-button");
+        const btnText = document.getElementById("stripe-button-text");
+        const btnSpinner = document.getElementById("stripe-button-spinner");
+        const closeBtn = document.getElementById("close-stripe-modal");
+        const checkoutForm = document.getElementById("bill-checkout-form");
+        const paymentElementContainer = document.getElementById("stripe-payment-element");
+        const expressCheckoutContainer = document.getElementById("stripe-express-checkout-element");
+
+        function openModal() {
+          modal.classList.add("open");
+          errorBox.hidden = true;
+          errorBox.textContent = "";
+          spinner.hidden = false;
+          paymentElementContainer.innerHTML = "";
+          expressCheckoutContainer.innerHTML = "";
+          submitBtn.hidden = true;
+        }
+
+        function closeModal() {
+          if (isProcessing) return;
+          modal.classList.remove("open");
+          spinner.hidden = true;
+          errorBox.hidden = true;
+        }
+
+        closeBtn.addEventListener("click", closeModal);
+        modal.addEventListener("click", function(e) {
+          if (e.target === modal) closeModal();
+        });
+
+        function showStripeError(message) {
+          spinner.hidden = true;
+          errorBox.textContent = message || "No se pudo procesar el pago.";
+          errorBox.hidden = false;
+          setSubmitting(false);
+        }
+
+        function setSubmitting(submitting) {
+          isProcessing = submitting;
+          submitBtn.disabled = submitting;
+          btnText.hidden = submitting;
+          btnSpinner.hidden = !submitting;
+        }
+
+        async function handlePaymentInitiation(preferredMethod) {
+          const s = getStripeInstance();
+          if (!s) {
+            showStripeError("El servicio de pagos no está disponible en este momento.");
+            return;
+          }
+
+          document.getElementById("selected-payment-method").value = preferredMethod || "card";
+          openModal();
+
+          try {
+            const formData = new FormData(checkoutForm);
+            const response = await fetch(checkoutForm.action, {
+              method: "POST",
+              headers: {
+                "X-Requested-With": "XMLHttpRequest",
+                "Accept": "application/json"
+              },
+              body: formData
+            });
+
+            const data = await response.json();
+            if (!response.ok || data.error) {
+              showStripeError(data.error || "No se pudo iniciar la transacción.");
+              return;
+            }
+
+            const clientSecret = data.client_secret;
+            currentReturnUrl = data.return_url;
+
+            if (!clientSecret) {
+              showStripeError("No se recibió el token de pago seguro.");
+              return;
+            }
+
+            elements = s.elements({
+              clientSecret: clientSecret,
+              appearance: {
+                theme: "stripe",
+                variables: {
+                  colorPrimary: "#d92d20",
+                  borderRadius: "12px",
+                }
+              }
+            });
+
+            try {
+              const expressCheckout = elements.create("expressCheckout");
+              expressCheckout.mount("#stripe-express-checkout-element");
+              expressCheckout.on("confirm", async function() {
+                setSubmitting(true);
+                const { error } = await s.confirmPayment({
+                  elements: elements,
+                  clientSecret: clientSecret,
+                  confirmParams: { return_url: currentReturnUrl }
+                });
+                if (error) showStripeError(error.message);
+              });
+            } catch (err) {
+              console.warn("Express Checkout not supported or failed to mount:", err);
+            }
+
+            const paymentElement = elements.create("payment");
+            paymentElement.mount("#stripe-payment-element");
+            paymentElement.on("ready", function() {
+              spinner.hidden = true;
+              submitBtn.hidden = false;
+            });
+
+          } catch (err) {
+            console.error("Payment initiation error:", err);
+            showStripeError("Error de conexión al procesar el pago. Intenta nuevamente.");
+          }
+        }
+
+        document.querySelectorAll(".payment-trigger-btn").forEach(function(btn) {
+          btn.addEventListener("click", function(e) {
+            e.preventDefault();
+            if (btn.disabled) return;
+            const method = btn.getAttribute("data-method") || "card";
+            handlePaymentInitiation(method);
+          });
+        });
+
+        submitBtn.addEventListener("click", async function(e) {
+          e.preventDefault();
+          const s = getStripeInstance();
+          if (!s || !elements) return;
+
+          setSubmitting(true);
+          errorBox.hidden = true;
+
+          try {
+            const { error } = await s.confirmPayment({
+              elements: elements,
+              confirmParams: { return_url: currentReturnUrl }
+            });
+            if (error) showStripeError(error.message);
+          } catch (err) {
+            console.error("Payment confirmation error:", err);
+            showStripeError("No se pudo confirmar el pago.");
+          }
+        });
+      })();
+    </script>
+    {% endif %}
+  {% endif %}
+</main>
+{% endblock %}

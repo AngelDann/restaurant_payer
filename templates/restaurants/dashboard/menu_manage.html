@@ -1,0 +1,141 @@
+{% extends "base_app.html" %}
+{% block title %}Menú – {{ restaurant.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'restaurant_dashboard' slug=restaurant.slug %}" class="text-decoration-none text-muted">{{ restaurant.name }}</a> / <strong>Menú</strong>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Menú</h1>
+    <p>Categorías, platillos, precios y disponibilidad. Los cambios se ven al instante en el menú del comensal.</p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn btn-soft" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      <i class="bi bi-tag" aria-hidden="true"></i><span>Nueva categoría</span>
+    </button>
+    <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#addItemModal">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Nuevo platillo o bebida</span>
+    </button>
+  </div>
+</div>
+
+{% if categories or uncategorized_items %}
+  {% for category in categories %}
+    <section class="panel menu-group" aria-labelledby="cat-{{ category.id }}">
+      <div class="panel-head">
+        <h2 id="cat-{{ category.id }}"><i class="bi bi-tag-fill text-danger me-2" aria-hidden="true"></i>{{ category.name }}</h2>
+        <span class="text-muted small">{{ category.items.count }} platillo{% if category.items.count != 1 %}s{% endif %}, orden {{ category.display_order }}</span>
+      </div>
+      {% if category.items.all %}
+        {% include "restaurants/dashboard/_menu_rows.html" with items=category.items.all %}
+      {% else %}
+        <div class="empty py-4"><p class="mb-0">Esta categoría aún no tiene platillos.</p></div>
+      {% endif %}
+    </section>
+  {% endfor %}
+
+  {% if uncategorized_items %}
+    <section class="panel menu-group" aria-labelledby="cat-sin">
+      <div class="panel-head">
+        <h2 id="cat-sin"><i class="bi bi-folder2-open me-2" aria-hidden="true"></i>Sin categoría</h2>
+        <span class="text-muted small">{{ uncategorized_items.count }} platillo{% if uncategorized_items.count != 1 %}s{% endif %}</span>
+      </div>
+      {% include "restaurants/dashboard/_menu_rows.html" with items=uncategorized_items %}
+    </section>
+  {% endif %}
+{% else %}
+  <div class="panel empty">
+    <span class="empty-icon"><i class="bi bi-journal-richtext" aria-hidden="true"></i></span>
+    <h2 class="h4">Tu menú está vacío</h2>
+    <p>Empieza con categorías como Entradas, Platos fuertes o Bebidas y después agrega cada platillo con su precio y foto.</p>
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <button type="button" class="btn btn-soft" data-bs-toggle="modal" data-bs-target="#addCategoryModal"><i class="bi bi-tag" aria-hidden="true"></i><span>Crear categoría</span></button>
+      <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#addItemModal"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Crear platillo</span></button>
+    </div>
+  </div>
+{% endif %}
+
+<div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'restaurant_category_add' slug=restaurant.slug %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title" id="addCategoryModalLabel"><i class="bi bi-tag-fill" aria-hidden="true"></i>Nueva categoría</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="{{ category_form.name.id_for_label }}">Nombre de la categoría</label>
+            {{ category_form.name }}
+          </div>
+          <div class="mb-1">
+            <label class="form-label" for="{{ category_form.display_order.id_for_label }}">Posición en el menú</label>
+            {{ category_form.display_order }}
+            <div class="form-text">Los números más pequeños aparecen primero.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Crear categoría</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" action="{% url 'restaurant_menu_item_add' slug=restaurant.slug %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title" id="addItemModalLabel"><i class="bi bi-egg-fried" aria-hidden="true"></i>Nuevo platillo o bebida</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="{{ item_form.category.id_for_label }}">Categoría</label>
+              {{ item_form.category }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ item_form.name.id_for_label }}">Nombre</label>
+              {{ item_form.name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ item_form.price.id_for_label }}">Precio ({{ restaurant.currency }})</label>
+              {{ item_form.price }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ item_form.weight_or_volume.id_for_label }}">Gramaje o volumen (opcional)</label>
+              {{ item_form.weight_or_volume }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ item_form.description.id_for_label }}">Descripción</label>
+              {{ item_form.description }}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="{{ item_form.image_url.id_for_label }}">URL de la imagen</label>
+              {{ item_form.image_url }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ item_form.display_order.id_for_label }}">Posición en la categoría</label>
+              {{ item_form.display_order }}
+            </div>
+            <div class="col-12">
+              <div class="form-check form-switch">
+                {{ item_form.is_available }}
+                <label class="form-check-label" for="{{ item_form.is_available.id_for_label }}">Disponible de inmediato en el menú digital</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Guardar platillo</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

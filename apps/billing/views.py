@@ -1,5 +1,5 @@
 """
-Stripe webhook (POST /billing/stripe/webhook/):
+Stripe webhook and billing views.
 
 Environment:
   STRIPE_SECRET_KEY — API key used by the Stripe SDK (required before verify).
@@ -16,22 +16,41 @@ Stripe Dashboard (or CLI: stripe listen --forward-to localhost:8000/billing/stri
     refund.created
     refund.updated
     charge.refund.updated
+    payment_intent.succeeded
+    payment_intent.payment_failed
+    account.updated
 """
 
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import stripe
 from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import (
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseForbidden,
+    JsonResponse,
+)
+from django.shortcuts import get_object_or_404, redirect
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.billing.models import StripeWebhookEvent
+from apps.billing.services import (
+    StripeGatewayError,
+    create_account_login_link,
+    create_account_onboarding_link,
+)
 from apps.billing.stripe_handlers import dispatch_stripe_event
+from apps.restaurants.models import Restaurant
 
 logger = logging.getLogger(__name__)
 
@@ -40,10 +59,151 @@ def index(request):
     return HttpResponse("Billing / Stripe integration placeholder.")
 
 
+def apple_pay_domain_association(request):
+    """
+    Serve Apple Pay domain association file from settings content or disk.
+    """
+    content = getattr(settings, "APPLE_PAY_DOMAIN_ASSOCIATION_CONTENT", "") or ""
+    if not content:
+        base_dir = getattr(settings, "BASE_DIR", None)
+        if base_dir:
+            file_path = (
+                Path(base_dir)
+                / ".well-known"
+                / "apple-developer-merchantid-domain-association"
+            )
+            if file_path.is_file():
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                except Exception:
+                    content = ""
+    return HttpResponse(content, content_type="text/plain")
+
+
+def _redirect_to_dashboard(slug: str):
+    try:
+        return redirect(reverse("restaurant_dashboard", kwargs={"slug": slug}))
+    except Exception:
+        return redirect(f"/dashboard/{slug}/")
+
+
+@login_required
+def connect_onboarding_start(request, slug: str):
+    """
+    Initiate Stripe Connect Express onboarding flow for a restaurant.
+    Redirects to Stripe onboarding URL.
+    """
+    restaurant = get_object_or_404(Restaurant, slug=slug)
+
+    if (
+        restaurant.owner_id
+        and restaurant.owner_id != request.user.id
+        and not request.user.is_staff
+    ):
+        return HttpResponseForbidden("No tienes permiso sobre este restaurante.")
+
+    try:
+        return_url = request.build_absolute_uri(
+            reverse("stripe_connect_return", kwargs={"slug": slug})
+        )
+    except Exception:
+        return_url = request.build_absolute_uri(f"/billing/connect/return/{slug}/")
+
+    try:
+        refresh_url = request.build_absolute_uri(
+            reverse("stripe_connect_onboarding", kwargs={"slug": slug})
+        )
+    except Exception:
+        refresh_url = request.build_absolute_uri(f"/billing/connect/start/{slug}/")
+
+    try:
+        if restaurant.stripe_onboarding_completed and restaurant.stripe_account_id:
+            try:
+                dashboard_url = create_account_login_link(restaurant)
+                return redirect(dashboard_url)
+            except StripeGatewayError:
+                logger.info(
+                    "Login link creation failed for onboarded restaurant %s; falling back to onboarding link.",
+                    restaurant.slug,
+                )
+
+        onboarding_url = create_account_onboarding_link(
+            restaurant=restaurant,
+            return_url=return_url,
+            refresh_url=refresh_url,
+        )
+        return redirect(onboarding_url)
+    except StripeGatewayError as exc:
+        messages.error(request, str(exc))
+        return _redirect_to_dashboard(slug)
+
+
+@login_required
+def connect_onboarding_return(request, slug: str):
+    """
+    Handle return redirect from Stripe Connect Express onboarding.
+    Retrieves account from Stripe, verifies status, and updates restaurant.
+    """
+    restaurant = get_object_or_404(Restaurant, slug=slug)
+
+    if (
+        restaurant.owner_id
+        and restaurant.owner_id != request.user.id
+        and not request.user.is_staff
+    ):
+        return HttpResponseForbidden("No tienes permiso sobre este restaurante.")
+
+    secret_key = (getattr(settings, "STRIPE_SECRET_KEY", "") or "").strip()
+    if not secret_key:
+        messages.error(request, "STRIPE_SECRET_KEY no está configurada.")
+        return _redirect_to_dashboard(slug)
+
+    if not restaurant.stripe_account_id:
+        messages.error(
+            request, "No se encontró una cuenta de Stripe para este restaurante."
+        )
+        return _redirect_to_dashboard(slug)
+
+    stripe.api_key = secret_key
+    try:
+        acct = stripe.Account.retrieve(restaurant.stripe_account_id)
+        is_completed = bool(
+            acct.get("charges_enabled") and acct.get("details_submitted")
+        )
+        restaurant.stripe_onboarding_completed = is_completed
+        restaurant.save(update_fields=["stripe_onboarding_completed", "updated_at"])
+
+        if is_completed:
+            messages.success(
+                request, "Cuenta de Stripe Connect configurada exitosamente."
+            )
+        else:
+            messages.warning(
+                request,
+                "Stripe requiere información adicional para habilitar pagos en tu cuenta.",
+            )
+    except stripe.StripeError as exc:
+        logger.warning(
+            "Could not retrieve Stripe account %s: %s",
+            restaurant.stripe_account_id,
+            exc,
+        )
+        messages.error(request, f"Error al verificar la cuenta de Stripe: {exc}")
+
+    return _redirect_to_dashboard(slug)
+
+
 def _stripe_object_to_dict(obj: object) -> dict:
+    if isinstance(obj, dict):
+        return obj
+    to_dict_recursive = getattr(obj, "to_dict_recursive", None)
+    if callable(to_dict_recursive):
+        return to_dict_recursive()
     to_dict = getattr(obj, "to_dict", None)
     if callable(to_dict):
         return to_dict()
+    if hasattr(obj, "__dict__"):
+        return dict(obj)
     raise TypeError("Expected Stripe object with to_dict()")
 
 

@@ -1,0 +1,11 @@
+{% if messages %}
+  <div class="{{ wrapper|default:'' }}" aria-live="polite">
+    {% for message in messages %}
+      <div class="notice notice--{{ message.level_tag|default:'info' }}" role="{% if message.level_tag == 'error' %}alert{% else %}status{% endif %}">
+        <i class="bi {% if message.level_tag == 'success' %}bi-check-circle-fill{% elif message.level_tag == 'error' %}bi-exclamation-octagon-fill{% elif message.level_tag == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %}" aria-hidden="true"></i>
+        <div>{{ message }}</div>
+        <button type="button" class="notice-close" aria-label="Cerrar aviso" onclick="this.closest('.notice').remove()"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}

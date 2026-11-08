@@ -1,0 +1,82 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static %}
+
+{% block title %}{{ restaurant.name }} · Mesa N°{{ table.number }}{% endblock %}
+
+{% block content %}
+<header class="guest-cover-header {% if not restaurant.cover_image_url %}is-empty{% endif %}" {% if restaurant.cover_image_url %}style="background-image: url('{{ restaurant.cover_image_url }}');"{% endif %}>
+  <i class="bi bi-cup-hot-fill cover-mark" aria-hidden="true"></i>
+  <div class="guest-cover-overlay"></div>
+  <div class="guest-header-nav">
+    <span class="g-chip g-chip--glass">
+      <i class="bi bi-qr-code-scan" aria-hidden="true"></i>Mesa N°{{ table.number }}
+    </span>
+    {% if has_active_order %}
+      <span class="g-chip g-chip--live">Cuenta activa</span>
+    {% endif %}
+  </div>
+</header>
+
+<section class="guest-restaurant-card" aria-label="Información del restaurante">
+  <div class="guest-logo-wrap">
+    {% if restaurant.logo_url %}
+      <img src="{{ restaurant.logo_url }}" alt="{{ restaurant.name }}" class="guest-logo-img">
+    {% else %}
+      <div class="guest-logo-placeholder" aria-hidden="true">
+        {{ restaurant.name|slice:":1"|upper }}
+      </div>
+    {% endif %}
+  </div>
+
+  <h1 class="guest-restaurant-name">{{ restaurant.name }}</h1>
+  {% if restaurant.tagline %}
+    <p class="guest-restaurant-tagline">{{ restaurant.tagline }}</p>
+  {% elif restaurant.address %}
+    <p class="guest-restaurant-tagline">{{ restaurant.address }}</p>
+  {% endif %}
+
+  <div class="g-chip">
+    <i class="bi bi-geo-alt-fill" aria-hidden="true"></i>{{ table.display_name }}
+  </div>
+</section>
+
+<main id="g-main" class="guest-hub-actions">
+  <a href="{% url 'guest_table_bill' restaurant.slug table.number %}" class="g-action g-action--primary">
+    <div class="icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></div>
+    <div class="info">
+      <div class="title">
+        <span>Pagar la cuenta</span>
+        {% if has_active_order %}
+          <span class="g-owe num">${{ amount_remaining }} MXN</span>
+        {% endif %}
+      </div>
+      <div class="desc">
+        {% if has_active_order %}
+          Divide la cuenta, elige tu propina y paga al instante
+        {% else %}
+          Paga con Apple Pay, Google Pay o tarjeta
+        {% endif %}
+      </div>
+    </div>
+    <i class="bi bi-chevron-right go" aria-hidden="true"></i>
+  </a>
+
+  <a href="{% url 'guest_table_menu' restaurant.slug table.number %}" class="g-action">
+    <div class="icon"><i class="bi bi-journal-richtext" aria-hidden="true"></i></div>
+    <div class="info">
+      <div class="title">Ver el menú</div>
+      <div class="desc">Explora nuestros platillos, bebidas y postres</div>
+    </div>
+    <i class="bi bi-chevron-right go" aria-hidden="true"></i>
+  </a>
+
+  <a href="{% url 'guest_feedback' restaurant.slug table.number %}" class="g-action">
+    <div class="icon"><i class="bi bi-star-fill" aria-hidden="true"></i></div>
+    <div class="info">
+      <div class="title">Dejar reseña</div>
+      <div class="desc">Comparte tu opinión y califícanos en Google Maps</div>
+    </div>
+    <i class="bi bi-chevron-right go" aria-hidden="true"></i>
+  </a>
+</main>
+{% endblock %}

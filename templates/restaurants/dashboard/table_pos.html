@@ -1,0 +1,83 @@
+{% extends "base_app.html" %}
+{% block title %}Comanda Mesa N°{{ table.number }} – {{ restaurant.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'restaurant_dashboard' slug=restaurant.slug %}" class="text-decoration-none text-muted">{{ restaurant.name }}</a> / <strong>Mesa N°{{ table.number }}</strong>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mesa N°{{ table.number }}</h1>
+    <p><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ table.label|default:"Salón" }}. Agrega platillos a la comanda; el comensal verá su cuenta al instante.</p>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'restaurant_dashboard' slug=restaurant.slug %}" class="btn btn-soft">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Volver a las mesas</span>
+    </a>
+    <a href="{{ guest_path }}" target="_blank" rel="noopener" class="btn btn-soft">
+      <i class="bi bi-phone" aria-hidden="true"></i><span>Vista del comensal</span>
+    </a>
+    <a href="{% url 'restaurant_table_qr' slug=restaurant.slug table_number=table.number %}" target="_blank" rel="noopener" class="btn btn-soft">
+      <i class="bi bi-printer" aria-hidden="true"></i><span>Imprimir QR</span>
+    </a>
+  </div>
+</div>
+
+<div class="pos-layout">
+  <section class="panel" aria-labelledby="catalogo-titulo">
+    <div class="catalog-tools">
+      <h2 id="catalogo-titulo" class="h5 mb-0"><i class="bi bi-journal-richtext text-danger me-2" aria-hidden="true"></i>Menú</h2>
+      <div class="field-icon">
+        <i class="bi bi-search" aria-hidden="true"></i>
+        <input type="search" class="form-control form-control-sm" placeholder="Buscar platillo" aria-label="Buscar platillo" data-filter="#catalog" autocomplete="off">
+      </div>
+    </div>
+
+    <div id="catalog" class="px-3 px-md-4 pb-4">
+      {% for category in categories %}
+        <div data-filter-group>
+          <h3 class="cat-title h6"><i class="bi bi-tag-fill" aria-hidden="true"></i>{{ category.name }}</h3>
+          <div class="dish-grid">
+            {% for item in category.items.all %}
+              <article class="dish-tile" data-filter-text="{{ item.name }} {{ category.name }}">
+                <div class="top">
+                  {% if item.image_url %}
+                    <img src="{{ item.image_url }}" alt="" width="64" height="64" loading="lazy">
+                  {% else %}
+                    <span class="ph" aria-hidden="true"><i class="bi bi-egg-fried fs-4"></i></span>
+                  {% endif %}
+                  <div class="min-w-0">
+                    <div class="name">{{ item.name }}</div>
+                    <div class="price">${{ item.price|floatformat:"2u" }} {{ restaurant.currency }}</div>
+                    {% if item.weight_or_volume %}<span class="chip mt-1">{{ item.weight_or_volume }}</span>{% endif %}
+                  </div>
+                </div>
+                {% if item.description %}<p class="desc">{{ item.description }}</p>{% endif %}
+
+                <form hx-post="{% url 'pos_add_item' slug=restaurant.slug table_number=table.number %}" hx-target="#order-panel" hx-swap="outerHTML">
+                  {% csrf_token %}
+                  <input type="hidden" name="menu_item_id" value="{{ item.id }}">
+                  <input type="hidden" name="quantity" value="1">
+                  <button type="submit" class="btn btn-brand btn-sm w-100"><i class="bi bi-plus-lg" aria-hidden="true"></i><span>Agregar a la comanda</span></button>
+                </form>
+              </article>
+            {% endfor %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="empty">
+          <span class="empty-icon"><i class="bi bi-journal-richtext" aria-hidden="true"></i></span>
+          <h3>Todavía no hay platillos</h3>
+          <p>Crea categorías y platillos en el menú para poder tomar comandas.</p>
+          <a href="{% url 'restaurant_menu_manage' slug=restaurant.slug %}" class="btn btn-brand"><i class="bi bi-journal-richtext" aria-hidden="true"></i><span>Ir al menú</span></a>
+        </div>
+      {% endfor %}
+      <div class="empty" data-filter-empty hidden>
+        <p class="mb-0">Ningún platillo coincide con tu búsqueda.</p>
+      </div>
+    </div>
+  </section>
+
+  <aside class="pos-aside" aria-label="Comanda de la mesa">
+    {% include "restaurants/dashboard/_order_panel.html" %}
+  </aside>
+</div>
+{% endblock %}

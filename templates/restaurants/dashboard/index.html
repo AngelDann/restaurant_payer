@@ -1,0 +1,155 @@
+{% extends "base_app.html" %}
+{% block title %}Mis restaurantes – PlavPay{% endblock %}
+{% block crumbs %}<strong>Mis restaurantes</strong>{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Mis restaurantes</h1>
+    <p>
+      Hola, {{ request.user.get_full_name|default:request.user.username }}.
+      {% if restaurants %}Elige un restaurante para ver sus mesas y cobros.{% else %}Registra tu primer restaurante para empezar.{% endif %}
+    </p>
+  </div>
+  <div class="page-actions">
+    <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#createRestaurantModal">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Registrar nuevo restaurante</span>
+    </button>
+  </div>
+</div>
+
+{% if form.errors %}
+  <div class="notice notice--error" role="alert">
+    <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+    <div>
+      <strong>No se pudo guardar el restaurante.</strong>
+      <ul>
+        {% for field, errors in form.errors.items %}{% for error in errors %}<li><strong>{{ field|title }}:</strong> {{ error }}</li>{% endfor %}{% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endif %}
+
+{% if restaurants %}
+  <div class="venue-grid">
+    {% for restaurant in restaurants %}
+      <article class="venue-card">
+        {% if restaurant.cover_image_url %}
+          <div class="venue-cover" style="background-image: url('{{ restaurant.cover_image_url }}');" role="img" aria-label="Portada de {{ restaurant.name }}"></div>
+        {% else %}
+          <div class="venue-cover is-empty" aria-hidden="true"><i class="bi bi-cup-hot-fill"></i></div>
+        {% endif %}
+
+        <div class="venue-body">
+          <div class="venue-id">
+            {% if restaurant.logo_url %}
+              <img class="avatar" src="{{ restaurant.logo_url }}" alt="Logo de {{ restaurant.name }}" width="62" height="62">
+            {% else %}
+              <span class="avatar" aria-hidden="true"><i class="bi bi-shop"></i></span>
+            {% endif %}
+            <div class="min-w-0">
+              <h2 class="text-truncate">{{ restaurant.name }}</h2>
+              <small>/{{ restaurant.slug }}</small>
+            </div>
+          </div>
+
+          {% if restaurant.tagline %}<p class="mb-0">{{ restaurant.tagline }}</p>{% endif %}
+          {% if restaurant.address %}
+            <p class="text-muted small mb-0"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>{{ restaurant.address }}</p>
+          {% endif %}
+
+          <div class="venue-facts">
+            <span class="chip"><i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>{{ restaurant.tables.count }} mesas</span>
+            <span class="chip"><i class="bi bi-journal-richtext" aria-hidden="true"></i>{{ restaurant.menu_items.count }} platillos</span>
+            {% if restaurant.stripe_onboarding_completed %}
+              <span class="chip chip--ok"><i class="bi bi-check-circle-fill" aria-hidden="true"></i>Stripe conectado</span>
+            {% else %}
+              <span class="chip chip--warn"><i class="bi bi-exclamation-circle-fill" aria-hidden="true"></i>Falta conectar Stripe</span>
+            {% endif %}
+          </div>
+
+          <div class="venue-actions">
+            <a href="{% url 'restaurant_dashboard' slug=restaurant.slug %}" class="btn btn-ink">
+              <i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i><span>Abrir panel</span>
+            </a>
+            <a href="{% url 'restaurant_menu_manage' slug=restaurant.slug %}" class="btn btn-soft">
+              <i class="bi bi-journal-richtext" aria-hidden="true"></i><span>Menú</span>
+            </a>
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="panel empty">
+    <span class="empty-icon"><i class="bi bi-shop" aria-hidden="true"></i></span>
+    <h2 class="h4">Aún no tienes restaurantes</h2>
+    <p>Registra uno para generar un QR por mesa, cobrar con Apple Pay y tarjeta mediante Stripe Connect, y ver las cuentas abiertas en vivo.</p>
+    <button type="button" class="btn btn-brand btn-lg" data-bs-toggle="modal" data-bs-target="#createRestaurantModal">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Registrar mi primer restaurante</span>
+    </button>
+  </div>
+{% endif %}
+
+<div class="modal fade" id="createRestaurantModal" tabindex="-1" aria-labelledby="createRestaurantModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" action="{% url 'dashboard_home' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title" id="createRestaurantModalLabel"><i class="bi bi-shop" aria-hidden="true"></i>Registrar nuevo restaurante</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-7">
+              <label class="form-label" for="{{ form.name.id_for_label }}">Nombre del restaurante</label>
+              {{ form.name }}
+            </div>
+            <div class="col-md-5">
+              <label class="form-label" for="{{ form.slug.id_for_label }}">Dirección web</label>
+              {{ form.slug }}
+              <div class="form-text">Déjala vacía para generarla desde el nombre.</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.tagline.id_for_label }}">Eslogan o tipo de cocina</label>
+              {{ form.tagline }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.address.id_for_label }}">Dirección del local</label>
+              {{ form.address }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.logo_url.id_for_label }}">URL del logotipo</label>
+              {{ form.logo_url }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ form.cover_image_url.id_for_label }}">URL de la imagen de portada</label>
+              {{ form.cover_image_url }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.google_maps_review_url.id_for_label }}">Enlace de reseñas en Google Maps</label>
+              {{ form.google_maps_review_url }}
+              <div class="form-text">Quien califique con 4 o 5 estrellas recibirá la invitación a reseñar en este enlace.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Crear restaurante</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if form.errors %}
+<script>
+  window.addEventListener("load", function () {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("createRestaurantModal")).show();
+  });
+</script>
+{% endif %}
+{% endblock %}

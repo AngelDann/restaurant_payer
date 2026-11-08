@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión – PlavPay{% endblock %}
+
+{% block content %}
+<div class="auth">
+  <aside class="auth-aside">
+    <i class="bi bi-cup-hot-fill bg-mark" aria-hidden="true"></i>
+    <div>
+      <h2>Tu salón, tus cobros y tu menú en un solo lugar</h2>
+      <p>Entra para ver qué mesas tienen la cuenta abierta y cuánto falta por cobrar.</p>
+    </div>
+    <div class="ticket" aria-hidden="true">
+      <div class="row-l"><b>Mesa N°4</b><span>Barra</span></div>
+      <div class="row-l"><span>2 Cervezas</span><span>$110.00</span></div>
+      <div class="row-l"><span>1 Guacamole</span><span>$95.00</span></div>
+      <div class="row-l"><span>4 Tacos de suadero</span><span>$140.00</span></div>
+      <div class="row-l sum"><span>Pendiente</span><span>$345.00</span></div>
+    </div>
+  </aside>
+
+  <section class="auth-main" aria-labelledby="login-title">
+    <div class="auth-card">
+      <h1 id="login-title">Iniciar sesión</h1>
+      <p class="sub">Accede al panel de tu restaurante.</p>
+
+      {% if form.non_field_errors %}
+        <div class="notice notice--error" role="alert">
+          <i class="bi bi-exclamation-octagon-fill" aria-hidden="true"></i>
+          <div>{% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}</div>
+        </div>
+      {% endif %}
+
+      <form method="post" action="{% url 'login' %}" novalidate>
+        {% csrf_token %}
+        {% if request.GET.next %}
+          <input type="hidden" name="next" value="{{ request.GET.next }}">
+        {% endif %}
+
+        <div class="mb-3">
+          <label class="form-label" for="login-username">Usuario</label>
+          <div class="field-icon">
+            <i class="bi bi-person" aria-hidden="true"></i>
+            <input type="text" id="login-username" name="username" class="form-control" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}">
+          </div>
+          {% if form.username.errors %}<div class="field-error">{{ form.username.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="login-password">Contraseña</label>
+          <div class="field-icon has-action">
+            <i class="bi bi-lock" aria-hidden="true"></i>
+            <input type="password" id="login-password" name="password" class="form-control" autocomplete="current-password" required>
+            <button type="button" class="field-action" data-toggle-password="#login-password" aria-label="Mostrar contraseña"><i class="bi bi-eye" aria-hidden="true"></i></button>
+          </div>
+          {% if form.password.errors %}<div class="field-error">{{ form.password.errors.0 }}</div>{% endif %}
+        </div>
+
+        <button type="submit" class="btn btn-brand btn-lg w-100">
+          <i class="bi bi-box-arrow-in-right" aria-hidden="true"></i><span>Entrar al panel</span>
+        </button>
+      </form>
+
+      <p class="auth-alt mb-0">
+        ¿Aún no tienes cuenta? <a href="{% url 'register' %}">Registra tu restaurante</a>
+      </p>
+    </div>
+  </section>
+</div>
+{% endblock %}

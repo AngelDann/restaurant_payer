@@ -37,5 +37,9 @@ Carga en `templates/base.html`:
 
 ## CSS / JS propios
 
-- `static/css/app.css` — indicadores `htmx-request` / `.htmx-indicator`.
-- `static/js/app.js` — listeners `htmx:afterSwap` y `htmx:afterRequest`.
+- `static/css/app.css` — sistema de diseño del sitio público y del panel (paleta KimiPOS: chile `#d92d20`, paprika `#f26b1d`, mole `#5a1018`, cacao `#241615`), layout con barra lateral (`templates/base_app.html`), tarjetas KPI y componentes POS.
+- `static/css/guest.css` — flujo móvil del comensal (`templates/restaurants/guest/base_guest.html`).
+- `static/css/qr_print.css` — hoja de estilos independiente para el sticker imprimible de mesa (`templates/restaurants/dashboard/qr_print.html`).
+- `static/js/app.js` — confirmaciones con `<dialog>`, toasts, copiado al portapapeles, filtro en vivo del catálogo POS, conteo animado de KPIs y listeners HTMX (`htmx:afterSwap`, `htmx:afterRequest`, `htmx:confirm`).
+- `static/js/home.js` — calculadora interactiva de propinas e inclinación 3D al cursor en la portada (`templates/core/home.html`).
+- `static/js/guest.js` — calificación interactiva por estrellas y platillos, preservación de scroll en menú e `IntersectionObserver` de categorías en móvil.

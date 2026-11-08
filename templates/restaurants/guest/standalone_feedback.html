@@ -1,0 +1,97 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static %}
+
+{% block title %}Dejar reseña · {{ restaurant.name }} · Mesa N°{{ table.number }}{% endblock %}
+
+{% block content %}
+<header class="g-header">
+  <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Volver al inicio de la mesa">
+    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+  </a>
+  <div class="titles">
+    <h2>{{ restaurant.name }}</h2>
+    <div class="sub">Mesa N°{{ table.number }}</div>
+  </div>
+  <span class="g-icon-btn is-ghost" aria-hidden="true"></span>
+</header>
+
+<main id="g-main" class="guest-review-page" data-rating data-has-google="{% if restaurant.google_maps_review_url %}true{% else %}false{% endif %}">
+  <h1 class="guest-review-title">Tu opinión nos importa</h1>
+  <p class="guest-review-subtitle">
+    ¿Cómo ha sido tu visita hoy en <strong>{{ restaurant.name }}</strong>?
+  </p>
+
+  {% if saved %}
+    <div class="guest-confirmed-banner" role="status">
+      <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+      <span>Gracias por compartir tu opinión</span>
+    </div>
+  {% endif %}
+
+  <section class="guest-stars-section" aria-labelledby="feedback-heading">
+    <h2 id="feedback-heading" class="guest-stars-title">Califica tu experiencia</h2>
+
+    <form method="post" action="{% url 'guest_feedback' restaurant.slug table.number %}" id="standalone-feedback-form">
+      {% csrf_token %}
+      <input type="hidden" name="overall_rating" id="selected-overall-rating" value="{{ review.overall_rating|default:5 }}">
+
+      <div class="guest-stars-row" id="stars-container" role="group" aria-label="Calificación de 1 a 5 estrellas">
+        {% for i in "12345" %}
+          <button type="button"
+                  class="guest-star-btn {% if forloop.counter <= review.overall_rating|default:5 %}active{% endif %}"
+                  data-star="{{ forloop.counter }}"
+                  aria-label="{{ forloop.counter }} estrella{{ forloop.counter|pluralize }}"
+                  aria-pressed="{% if forloop.counter == review.overall_rating|default:5 %}true{% else %}false{% endif %}">
+            <i class="bi bi-star-fill" aria-hidden="true"></i>
+          </button>
+        {% endfor %}
+      </div>
+
+      <div class="guest-star-label" id="star-label-text" aria-live="polite">
+        Excelente
+      </div>
+
+      <textarea name="comment"
+                rows="3"
+                aria-label="Tu comentario"
+                placeholder="Cuéntanos qué fue lo que más te gustó o cómo podemos mejorar"
+                class="guest-comment-textarea">{{ review.comment|default:'' }}</textarea>
+
+      <button type="submit" class="guest-submit-feedback-btn">
+        Enviar reseña
+      </button>
+    </form>
+  </section>
+
+  <div class="guest-center">
+    <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="guest-link">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Volver al inicio de la mesa</span>
+    </a>
+  </div>
+</main>
+
+<div class="guest-modal-backdrop {% if prompt_google %}open{% endif %}" id="google-maps-modal" role="dialog" aria-modal="true" aria-labelledby="gmaps-feedback-title" aria-hidden="{% if prompt_google %}false{% else %}true{% endif %}">
+  <div class="guest-modal-card">
+    <div class="guest-modal-icon-badge" aria-hidden="true">
+      <i class="bi bi-star-fill"></i>
+    </div>
+    <h2 id="gmaps-feedback-title" class="guest-modal-title">¿Te gustaría dejarnos una reseña en Google Maps?</h2>
+    <p class="guest-modal-body">
+      Nos alegra saber que tuviste una buena visita en <strong>{{ restaurant.name }}</strong>. Compártela en Google Maps para que más personas nos conozcan.
+    </p>
+
+    <div class="guest-modal-actions">
+      <a href="{{ restaurant.google_maps_review_url|default:'#' }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="guest-modal-btn-confirm"
+         data-google-confirm>
+        <i class="bi bi-google" aria-hidden="true"></i><span>Abrir Google Maps</span>
+      </a>
+      <button type="button" class="guest-modal-btn-dismiss" data-close-google>
+        Ahora no
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}

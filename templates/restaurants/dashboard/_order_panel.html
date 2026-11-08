@@ -1,0 +1,108 @@
+{% load l10n %}
+<div id="order-panel" class="panel order-panel" data-flash-on-swap>
+  <div class="order-panel-head">
+    <div>
+      <span class="table-name">Mesa N°{{ table.number }}</span>
+      <small>{{ table.label|default:"Salón" }}</small>
+    </div>
+    {% if order %}
+      {% if order.status == 'partially_paid' %}
+        <span class="chip chip--warn">Pago parcial</span>
+      {% else %}
+        <span class="chip chip--ok chip--dot">Comanda abierta</span>
+      {% endif %}
+    {% else %}
+      <span class="chip">Mesa libre</span>
+    {% endif %}
+  </div>
+
+  <div class="panel-pad">
+    {% if order %}
+      <div class="d-flex justify-content-between align-items-center small text-muted pb-2 mb-2 border-bottom">
+        <span><i class="bi bi-person me-1" aria-hidden="true"></i>Mesero: <strong class="text-body">{{ order.waiter_name|default:request.user.username }}</strong></span>
+        <span><i class="bi bi-people me-1" aria-hidden="true"></i>{{ order.guests_count }} personas</span>
+      </div>
+
+      <div class="order-lines">
+        {% for item in order.items.all %}
+          <div class="order-line">
+            <div class="min-w-0">
+              <div class="nm" title="{{ item.name_snapshot }}">{{ item.name_snapshot }}</div>
+              <div class="each num">${{ item.unit_price|floatformat:"2u" }} c/u</div>
+            </div>
+
+            <div class="stepper">
+              <form hx-post="{% url 'pos_update_item' slug=restaurant.slug table_number=table.number item_id=item.id %}" hx-target="#order-panel" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decrement">
+                <button type="submit" title="Quitar uno" aria-label="Quitar uno de {{ item.name_snapshot }}"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+              </form>
+              <b>{{ item.quantity }}</b>
+              <form hx-post="{% url 'pos_update_item' slug=restaurant.slug table_number=table.number item_id=item.id %}" hx-target="#order-panel" hx-swap="outerHTML">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="increment">
+                <button type="submit" title="Agregar uno" aria-label="Agregar uno de {{ item.name_snapshot }}"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+              </form>
+            </div>
+
+            <div class="line-total">${{ item.line_total|floatformat:"2u" }}</div>
+
+            <form hx-post="{% url 'pos_update_item' slug=restaurant.slug table_number=table.number item_id=item.id %}" hx-target="#order-panel" hx-swap="outerHTML">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove">
+              <button type="submit" class="remove-btn" title="Quitar de la comanda" aria-label="Quitar {{ item.name_snapshot }} de la comanda"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+            </form>
+          </div>
+        {% empty %}
+          <div class="empty py-4">
+            <span class="empty-icon"><i class="bi bi-basket" aria-hidden="true"></i></span>
+            <p class="mb-0">La comanda está vacía. Agrega platillos desde el menú.</p>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="bill-box">
+        <div class="bill-row big"><span>Subtotal</span><strong class="num">${{ order.subtotal|floatformat:"2u" }} <small class="text-muted fs-6 fw-normal">{{ restaurant.currency }}</small></strong></div>
+        {% if order.amount_paid > 0 %}
+          <div class="bill-row ok"><span>Ya pagado</span><span class="num">-${{ order.amount_paid|floatformat:"2u" }}</span></div>
+          <div class="bill-row due"><span>Saldo restante</span><span class="num">${{ order.amount_remaining|floatformat:"2u" }}</span></div>
+        {% endif %}
+      </div>
+
+      <div class="d-grid gap-2">
+        <a href="{{ guest_path|default:'/r/'|add:restaurant.slug|add:'/t/'|add:table.number|add:'/' }}" target="_blank" rel="noopener" class="btn btn-brand">
+          <i class="bi bi-phone" aria-hidden="true"></i><span>Vista del comensal</span>
+        </a>
+        <div class="d-flex gap-2">
+          <a href="{% url 'restaurant_table_qr' slug=restaurant.slug table_number=table.number %}" target="_blank" rel="noopener" class="btn btn-soft flex-fill">
+            <i class="bi bi-printer" aria-hidden="true"></i><span>Imprimir QR</span>
+          </a>
+          <form hx-post="{% url 'pos_close_order' slug=restaurant.slug table_number=table.number %}" hx-target="#order-panel" hx-swap="outerHTML" hx-confirm="La mesa quedará libre y la comanda se cerrará." class="flex-fill d-flex">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger-soft w-100"><i class="bi bi-x-circle" aria-hidden="true"></i><span>Cerrar mesa</span></button>
+          </form>
+        </div>
+      </div>
+
+    {% else %}
+      <div class="text-center py-3">
+        <span class="empty-icon is-ok d-inline-grid"><i class="bi bi-check2-circle" aria-hidden="true"></i></span>
+        <h3 class="h6 fw-bold mb-1">Mesa libre</h3>
+        <p class="text-muted small mb-3">Abre una comanda para empezar a tomar el pedido.</p>
+
+        <form hx-post="{% url 'pos_open_order' slug=restaurant.slug table_number=table.number %}" hx-target="#order-panel" hx-swap="outerHTML" class="text-start">
+          {% csrf_token %}
+          <div class="mb-2">
+            <label class="form-label" for="open-waiter">Mesero responsable</label>
+            <input type="text" id="open-waiter" name="waiter_name" class="form-control form-control-sm" value="{{ request.user.get_full_name|default:request.user.username }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="open-guests">Número de comensales</label>
+            <input type="number" id="open-guests" name="guests_count" class="form-control form-control-sm" value="2" min="1" max="50">
+          </div>
+          <button type="submit" class="btn btn-brand w-100"><i class="bi bi-play-fill" aria-hidden="true"></i><span>Abrir comanda</span></button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+</div>

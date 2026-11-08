@@ -1,0 +1,38 @@
+{% load l10n %}
+{% for item in items %}
+  <div class="menu-row {% if not item.is_available %}is-off{% endif %}">
+    {% if item.image_url %}
+      <img src="{{ item.image_url }}" alt="" class="menu-thumb" width="56" height="56" loading="lazy">
+    {% else %}
+      <span class="menu-thumb" aria-hidden="true"><i class="bi bi-egg-fried"></i></span>
+    {% endif %}
+
+    <div class="min-w-0">
+      <div class="menu-name">{{ item.name }}</div>
+      {% if item.description %}<div class="menu-desc" title="{{ item.description }}">{{ item.description }}</div>{% endif %}
+    </div>
+
+    <div class="menu-portion">
+      {% if item.weight_or_volume %}<span class="chip">{{ item.weight_or_volume }}</span>{% else %}<span class="text-muted">Sin porción</span>{% endif %}
+    </div>
+
+    <div class="menu-price">${{ item.price|floatformat:"2u" }} <small class="text-muted fw-normal">{{ restaurant.currency }}</small></div>
+
+    <div class="menu-state">
+      {% if item.is_available %}
+        <span class="chip chip--ok chip--dot">Disponible</span>
+      {% else %}
+        <span class="chip chip--hot chip--dot">Agotado</span>
+      {% endif %}
+    </div>
+
+    <form method="post" class="menu-act" action="{% url 'restaurant_menu_item_toggle' slug=restaurant.slug item_id=item.id %}">
+      {% csrf_token %}
+      {% if item.is_available %}
+        <button type="submit" class="btn btn-sm btn-danger-soft"><i class="bi bi-slash-circle" aria-hidden="true"></i><span>Marcar agotado</span></button>
+      {% else %}
+        <button type="submit" class="btn btn-sm btn-soft"><i class="bi bi-check2-circle" aria-hidden="true"></i><span>Habilitar</span></button>
+      {% endif %}
+    </form>
+  </div>
+{% endfor %}

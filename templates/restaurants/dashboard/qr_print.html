@@ -1,0 +1,51 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QR de la Mesa N°{{ table.number }} – {{ restaurant.name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{% static 'css/qr_print.css' %}">
+</head>
+<body>
+  <div class="toolbar no-print">
+    <div class="where">
+      <a href="{% url 'restaurant_dashboard' slug=restaurant.slug %}" class="tb-btn"><i class="bi bi-arrow-left" aria-hidden="true"></i>Volver al panel</a>
+      <span>Sticker de la Mesa N°{{ table.number }}</span>
+    </div>
+    <div class="actions">
+      <a href="{{ guest_path }}" target="_blank" rel="noopener" class="tb-btn"><i class="bi bi-phone" aria-hidden="true"></i>Probar el escaneo</a>
+      <button type="button" class="tb-btn tb-btn--primary" onclick="window.print()"><i class="bi bi-printer-fill" aria-hidden="true"></i>Imprimir</button>
+    </div>
+  </div>
+
+  <main class="stage">
+    <section class="sticker" aria-label="Sticker de la Mesa N°{{ table.number }}">
+      <div class="venue">
+        {% if restaurant.logo_url %}<img src="{{ restaurant.logo_url }}" alt="">{% endif %}
+        <strong>{{ restaurant.name }}</strong>
+      </div>
+      {% if restaurant.tagline %}<div class="tagline">{{ restaurant.tagline }}</div>{% endif %}
+
+      <div class="table-tag">Mesa N°{{ table.number }}</div>
+      <p class="instruction">Escanea para ver el menú y pagar tu cuenta sin esperar al mesero.</p>
+
+      <div class="qr-tile">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&amp;data={{ guest_url|urlencode }}" alt="Código QR de la Mesa {{ table.number }}" width="210" height="210">
+      </div>
+      <div class="url">{{ guest_url }}</div>
+
+      <div class="pay-row">
+        <span class="pay-chip"><i class="bi bi-apple" aria-hidden="true"></i>Apple Pay</span>
+        <span class="pay-chip"><i class="bi bi-google" aria-hidden="true"></i>Google Pay</span>
+        <span class="pay-chip"><i class="bi bi-credit-card" aria-hidden="true"></i>Tarjeta</span>
+      </div>
+      <div class="foot"><i class="bi bi-shield-check" aria-hidden="true"></i>Sin descargar apps. Pagas directo desde tu mesa.</div>
+    </section>
+  </main>
+</body>
+</html>

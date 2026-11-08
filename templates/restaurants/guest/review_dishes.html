@@ -1,0 +1,84 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static %}
+
+{% block title %}Califica tus platillos · {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<header class="g-header">
+  <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Volver al inicio de la mesa">
+    <i class="bi bi-x-lg" aria-hidden="true"></i>
+  </a>
+  <div class="titles">
+    <h2>{{ restaurant.name }}</h2>
+    <div class="sub">Mesa N°{{ table.number }}</div>
+  </div>
+  <span class="g-icon-btn is-ghost" aria-hidden="true"></span>
+</header>
+
+<main id="g-main" class="guest-review-page">
+  <h1 class="guest-review-title">Califica los platillos de tu orden</h1>
+  <p class="guest-review-subtitle">
+    Cuéntale a la cocina qué te gustó hoy.
+  </p>
+
+  <form method="post" action="{% url 'guest_review_dishes' restaurant.slug table.number payment.id %}" id="dish-rating-form">
+    {% csrf_token %}
+
+    <div class="guest-dishes-rating-list">
+      {% for dish in dishes %}
+        <div class="guest-dish-rating-card">
+          <div class="guest-dish-meta">
+            {% if dish.image_url %}
+              <img src="{{ dish.image_url }}" alt="{{ dish.name }}" class="guest-dish-thumb-img" loading="lazy">
+            {% else %}
+              <div class="guest-dish-thumb-img" aria-hidden="true">
+                <i class="bi bi-egg-fried"></i>
+              </div>
+            {% endif %}
+
+            <div class="guest-dish-info">
+              <h3>{{ dish.name }}</h3>
+              {% if dish.weight_or_volume %}
+                <span>{{ dish.weight_or_volume }}</span>
+              {% else %}
+                <span>Platillo de la casa</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <input type="hidden" name="dish_{{ dish.id }}" id="input-dish-{{ dish.id }}" value="">
+
+          <div class="guest-thumb-controls" role="group" aria-label="Calificar {{ dish.name }}">
+            <button type="button"
+                    class="guest-thumb-btn down"
+                    id="btn-down-{{ dish.id }}"
+                    data-thumb="down"
+                    data-dish="{{ dish.id }}"
+                    aria-pressed="false"
+                    aria-label="No me gustó {{ dish.name }}"
+                    title="No me gustó">
+              <i class="bi bi-hand-thumbs-down-fill" aria-hidden="true"></i>
+            </button>
+            <button type="button"
+                    class="guest-thumb-btn up"
+                    id="btn-up-{{ dish.id }}"
+                    data-thumb="up"
+                    data-dish="{{ dish.id }}"
+                    aria-pressed="false"
+                    aria-label="Me gustó {{ dish.name }}"
+                    title="Me gustó">
+              <i class="bi bi-hand-thumbs-up-fill" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+      {% empty %}
+        <p class="guest-item-empty">No hay platillos registrados para calificar en esta orden.</p>
+      {% endfor %}
+    </div>
+
+    <button type="submit" class="guest-next-btn" id="submit-dishes-review-btn">
+      Ver mi recibo
+    </button>
+  </form>
+</main>
+{% endblock %}

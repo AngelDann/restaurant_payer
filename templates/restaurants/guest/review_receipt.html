@@ -1,0 +1,148 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static l10n %}
+
+{% block title %}Recibo y calificación · {{ restaurant.name }}{% endblock %}
+
+{% block content %}
+<header class="g-header">
+  <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Volver al inicio de la mesa">
+    <i class="bi bi-x-lg" aria-hidden="true"></i>
+  </a>
+  <div class="titles">
+    <h2>{{ restaurant.name }}</h2>
+    <div class="sub">Mesa N°{{ table.number }}</div>
+  </div>
+  <span class="g-icon-btn is-ghost" aria-hidden="true"></span>
+</header>
+
+<main id="g-main" class="guest-review-page" data-rating data-has-google="{% if restaurant.google_maps_review_url %}true{% else %}false{% endif %}">
+  <div class="guest-confirmed-banner" role="status">
+    <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+    <span>Pago confirmado, ${{ payment.total_amount|unlocalize }} MXN</span>
+  </div>
+
+  <div class="guest-receipt-card">
+    <svg class="check-badge check-pop" viewBox="0 0 64 64" aria-hidden="true">
+      <circle cx="32" cy="32" r="30"/>
+      <path d="M20 33.5l8 8 16-17"/>
+    </svg>
+    <h1 class="guest-receipt-amount-hero">
+      Pagaste ${{ payment.total_amount|unlocalize }} MXN
+    </h1>
+    <div class="guest-receipt-status">
+      Comprobante de tu pago en mesa
+    </div>
+
+    <div class="guest-receipt-line">
+      <span>Fecha y hora</span>
+      <span>{{ payment.paid_at|default:payment.created_at|date:"d M Y, H:i" }}</span>
+    </div>
+    <div class="guest-receipt-line">
+      <span>Subtotal consumido</span>
+      <span>${{ payment.subtotal_amount|unlocalize }} MXN</span>
+    </div>
+    <div class="guest-receipt-line">
+      <span>Propina ({{ payment.tip_percentage }}%)</span>
+      <span>${{ payment.tip_amount|unlocalize }} MXN</span>
+    </div>
+    <div class="guest-receipt-line">
+      <span>Método de pago</span>
+      <span>
+        {% if payment.payment_method_label == 'apple_pay' %}
+          Apple Pay
+        {% elif payment.payment_method_label == 'google_pay' %}
+          Google Pay
+        {% elif payment.payment_method_label == 'card' %}
+          Tarjeta de débito o crédito
+        {% else %}
+          {{ payment.payment_method_label }}
+        {% endif %}
+      </span>
+    </div>
+    <div class="guest-receipt-line">
+      <span>Mesa</span>
+      <span>Mesa N°{{ table.number }}</span>
+    </div>
+    <div class="guest-receipt-line">
+      <span>Folio de pago</span>
+      <span>#{{ payment.id }}</span>
+    </div>
+
+    <div class="guest-receipt-line strong">
+      <span>Total pagado</span>
+      <span>${{ payment.total_amount|unlocalize }} MXN</span>
+    </div>
+  </div>
+
+  <section class="guest-stars-section" aria-labelledby="stars-heading">
+    <h2 id="stars-heading" class="guest-stars-title">¿Te gustó {{ restaurant.name }}?</h2>
+
+    <form method="post" action="{% url 'guest_review_receipt' restaurant.slug table.number payment.id %}" id="receipt-rating-form">
+      {% csrf_token %}
+      <input type="hidden" name="overall_rating" id="selected-overall-rating" value="{{ review.overall_rating|default:5 }}">
+
+      <div class="guest-stars-row" id="stars-container" role="group" aria-label="Calificación de 1 a 5 estrellas">
+        {% for i in "12345" %}
+          <button type="button"
+                  class="guest-star-btn {% if forloop.counter <= review.overall_rating|default:5 %}active{% endif %}"
+                  data-star="{{ forloop.counter }}"
+                  aria-label="{{ forloop.counter }} estrella{{ forloop.counter|pluralize }}"
+                  aria-pressed="{% if forloop.counter == review.overall_rating|default:5 %}true{% else %}false{% endif %}">
+            <i class="bi bi-star-fill" aria-hidden="true"></i>
+          </button>
+        {% endfor %}
+      </div>
+
+      <div class="guest-star-label" id="star-label-text" aria-live="polite">
+        {% if review.overall_rating == 1 %}Pésimo
+        {% elif review.overall_rating == 2 %}Malo
+        {% elif review.overall_rating == 3 %}Regular
+        {% elif review.overall_rating == 4 %}Bueno
+        {% else %}Excelente{% endif %}
+      </div>
+
+      <textarea name="comment"
+                rows="2"
+                aria-label="Comentario opcional para el restaurante"
+                placeholder="Escribe un comentario opcional para el restaurante"
+                class="guest-comment-textarea">{{ review.comment|default:'' }}</textarea>
+
+      <button type="submit" class="guest-submit-feedback-btn">
+        Guardar opinión
+      </button>
+    </form>
+  </section>
+
+  <div class="guest-center">
+    <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="guest-link">
+      <i class="bi bi-arrow-left" aria-hidden="true"></i><span>Volver al inicio de la mesa</span>
+    </a>
+  </div>
+</main>
+
+<div class="guest-modal-backdrop {% if prompt_google %}open{% endif %}" id="google-maps-modal" data-track-url="{% url 'guest_review_receipt' restaurant.slug table.number payment.id %}" role="dialog" aria-modal="true" aria-labelledby="gmaps-modal-title" aria-hidden="{% if prompt_google %}false{% else %}true{% endif %}">
+  <div class="guest-modal-card">
+    <div class="guest-modal-icon-badge" aria-hidden="true">
+      <i class="bi bi-star-fill"></i>
+    </div>
+    <h2 id="gmaps-modal-title" class="guest-modal-title">¿Te gustaría dejarnos una reseña en Google Maps?</h2>
+    <p class="guest-modal-body">
+      Tu opinión ayuda a que más personas conozcan <strong>{{ restaurant.name }}</strong>. Toma menos de un minuto.
+    </p>
+
+    <div class="guest-modal-actions">
+      <a href="{{ restaurant.google_maps_review_url|default:'#' }}"
+         target="_blank"
+         rel="noopener noreferrer"
+         class="guest-modal-btn-confirm"
+         id="google-maps-confirm-btn"
+         data-google-confirm>
+        <i class="bi bi-google" aria-hidden="true"></i><span>Abrir Google Maps</span>
+      </a>
+      <button type="button" class="guest-modal-btn-dismiss" data-close-google>
+        Ahora no
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}

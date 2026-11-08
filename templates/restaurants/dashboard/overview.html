@@ -1,0 +1,374 @@
+{% extends "base_app.html" %}
+{% load l10n %}
+{% block title %}Mesas y cobros – {{ restaurant.name }}{% endblock %}
+{% block crumbs %}<a href="{% url 'dashboard_home' %}" class="text-decoration-none text-muted">Mis restaurantes</a> / <strong>{{ restaurant.name }}</strong>{% endblock %}
+
+{% block topbar_actions %}
+  <a href="#mesas" class="btn btn-brand btn-sm d-none d-sm-inline-flex">
+    <i class="bi bi-receipt" aria-hidden="true"></i><span>Abrir POS</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div class="d-flex align-items-center gap-3 min-w-0">
+    {% if restaurant.logo_url %}
+      <img src="{{ restaurant.logo_url }}" alt="Logo de {{ restaurant.name }}" class="avatar" width="60" height="60">
+    {% else %}
+      <span class="avatar" aria-hidden="true"><i class="bi bi-shop fs-4"></i></span>
+    {% endif %}
+    <div class="min-w-0">
+      <h1 class="text-truncate">{{ restaurant.name }}</h1>
+      <p>{{ restaurant.tagline }}{% if restaurant.tagline and restaurant.address %}, {% endif %}{{ restaurant.address }}</p>
+    </div>
+  </div>
+  <div class="page-actions">
+    <a href="{% url 'restaurant_menu_manage' slug=restaurant.slug %}" class="btn btn-soft">
+      <i class="bi bi-journal-richtext" aria-hidden="true"></i><span>Administrar menú</span>
+    </a>
+    <button type="button" class="btn btn-soft" data-bs-toggle="modal" data-bs-target="#settingsModal">
+      <i class="bi bi-gear" aria-hidden="true"></i><span>Ajustes</span>
+    </button>
+    <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#addTableModal">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Nueva mesa</span>
+    </button>
+  </div>
+</div>
+
+<section class="panel stripe-banner {% if not restaurant.stripe_onboarding_completed %}is-pending{% endif %}" aria-label="Estado de Stripe Connect">
+  <span class="icon"><i class="bi {% if restaurant.stripe_onboarding_completed %}bi-patch-check-fill{% else %}bi-bank2{% endif %}" aria-hidden="true"></i></span>
+  <div class="body">
+    <h2>
+      Stripe Connect
+      {% if restaurant.stripe_onboarding_completed %}
+        <span class="chip chip--ok chip--dot">Cuenta conectada</span>
+      {% else %}
+        <span class="chip chip--hot chip--dot">Falta terminar el registro</span>
+      {% endif %}
+    </h2>
+    <p>
+      {% if restaurant.stripe_onboarding_completed %}
+        Cuenta <code>{{ restaurant.stripe_account_id }}</code>. Los pagos se depositan en tu cuenta bancaria con una comisión de plataforma de <strong>{{ restaurant.platform_fee_percent }}%</strong>.
+      {% else %}
+        Conecta tu cuenta bancaria para recibir pagos con Apple Pay, Google Pay y tarjeta directamente desde la mesa.
+      {% endif %}
+    </p>
+  </div>
+  <a href="{% url 'stripe_connect_onboarding' slug=restaurant.slug %}" class="btn {% if restaurant.stripe_onboarding_completed %}btn-soft{% else %}btn-brand{% endif %}">
+    <i class="bi bi-stripe" aria-hidden="true"></i>
+    <span>{% if restaurant.stripe_onboarding_completed %}Administrar Stripe Connect{% else %}Conectar con Stripe Connect{% endif %}</span>
+  </a>
+</section>
+
+<section class="kpi-grid is-entering" aria-label="Resumen del día">
+  <article class="kpi kpi--chili">
+    <div class="kpi-top"><span class="kpi-label">Mesas con cuenta</span><span class="kpi-icon"><i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i></span></div>
+    <div>
+      <div class="kpi-value"><span data-countup="{{ active_tables_count|unlocalize }}">{{ active_tables_count }}</span><small>de {{ total_tables }}</small></div>
+      <div class="kpi-note">Con comanda abierta ahora</div>
+    </div>
+    <i class="bi bi-cup-hot-fill kpi-mark" aria-hidden="true"></i>
+  </article>
+
+  <article class="kpi kpi--mole">
+    <div class="kpi-top"><span class="kpi-label">Por cobrar en mesas</span><span class="kpi-icon"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i></span></div>
+    <div>
+      <div class="kpi-value">$<span data-countup="{{ total_open_balance|unlocalize }}" data-decimals="2">{{ total_open_balance|floatformat:"2u" }}</span><small>{{ restaurant.currency }}</small></div>
+      <div class="kpi-note">Saldo pendiente de las cuentas abiertas</div>
+    </div>
+    <i class="bi bi-receipt kpi-mark" aria-hidden="true"></i>
+  </article>
+
+  <article class="kpi kpi--paprika">
+    <div class="kpi-top"><span class="kpi-label">Propinas recibidas</span><span class="kpi-icon"><i class="bi bi-cash-coin" aria-hidden="true"></i></span></div>
+    <div>
+      <div class="kpi-value">$<span data-countup="{{ tips_sum|unlocalize }}" data-decimals="2">{{ tips_sum|floatformat:"2u" }}</span><small>{{ restaurant.currency }}</small></div>
+      <div class="kpi-note">{{ payments_count }} pago{{ payments_count|pluralize }} completado{{ payments_count|pluralize }}</div>
+    </div>
+    <i class="bi bi-cash-stack kpi-mark" aria-hidden="true"></i>
+  </article>
+
+  <article class="kpi kpi--cacao">
+    <div class="kpi-top"><span class="kpi-label">Calificación promedio</span><span class="kpi-icon"><i class="bi bi-star-fill" aria-hidden="true"></i></span></div>
+    <div>
+      <div class="kpi-value">{% if reviews_count %}<span data-countup="{{ avg_rating }}" data-decimals="1">{{ avg_rating }}</span><small>de 5</small>{% else %}<span>Sin datos</span>{% endif %}</div>
+      <div class="kpi-note">{{ reviews_count }} reseña{{ reviews_count|pluralize }} registrada{{ reviews_count|pluralize }}</div>
+    </div>
+    <i class="bi bi-emoji-smile-fill kpi-mark" aria-hidden="true"></i>
+  </article>
+</section>
+
+<section id="mesas" aria-labelledby="mesas-titulo" class="mb-5">
+  <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+      <h2 id="mesas-titulo" class="mb-1">Mesas y códigos QR</h2>
+      <p class="text-muted mb-0">Abre la comanda de una mesa, imprime su QR o revisa lo que ve el comensal.</p>
+    </div>
+  </div>
+
+  {% if tables_data %}
+    <div class="table-grid">
+      {% for item in tables_data %}
+        <article class="table-card" data-state="{% if item.active_order %}{% if item.active_order.status == 'partially_paid' %}partial{% else %}open{% endif %}{% else %}free{% endif %}">
+          <div class="table-head">
+            <div class="min-w-0">
+              <h3 class="table-number">Mesa N°{{ item.table.number }}</h3>
+              <div class="table-zone"><i class="bi bi-geo-alt" aria-hidden="true"></i>{{ item.table.label|default:"Salón" }}</div>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              {% if item.active_order %}
+                {% if item.active_order.status == 'partially_paid' %}
+                  <span class="chip chip--warn">Pago parcial</span>
+                {% else %}
+                  <span class="chip chip--hot chip--dot">Cuenta abierta</span>
+                {% endif %}
+              {% else %}
+                <span class="chip">Libre</span>
+              {% endif %}
+              <form method="post" action="{% url 'restaurant_table_delete' slug=restaurant.slug table_number=item.table.number %}" data-confirm="Vas a eliminar la Mesa N°{{ item.table.number }} y su código QR. Esta acción no se puede deshacer.">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-ghost btn-icon btn-sm" title="Eliminar mesa" aria-label="Eliminar Mesa N°{{ item.table.number }}"><i class="bi bi-trash3" aria-hidden="true"></i></button>
+              </form>
+            </div>
+          </div>
+
+          <div class="table-body">
+            {% if item.active_order %}
+              <div class="table-total">
+                <span class="text-muted">Total de la comanda</span>
+                <strong class="num">${{ item.active_order.subtotal|floatformat:"2u" }}</strong>
+              </div>
+              {% if item.active_order.amount_paid > 0 %}
+                <div class="pay-line paid"><span>Pagado</span><span class="num">${{ item.active_order.amount_paid|floatformat:"2u" }}</span></div>
+                <div class="pay-line due"><span>Pendiente</span><span class="num">${{ item.active_order.amount_remaining|floatformat:"2u" }}</span></div>
+              {% endif %}
+              <div class="meter" role="progressbar" aria-label="Avance de pago" aria-valuenow="{{ item.active_order.payment_progress_percent|unlocalize }}" aria-valuemin="0" aria-valuemax="100"><span style="width: {{ item.active_order.payment_progress_percent|unlocalize }}%;"></span></div>
+              <div class="table-meta">
+                <span><i class="bi bi-person" aria-hidden="true"></i>{{ item.active_order.waiter_name|default:"Mesero" }}</span>
+                <span><i class="bi bi-people" aria-hidden="true"></i>{{ item.active_order.guests_count }} personas</span>
+              </div>
+              <div class="table-items" title="{% for i in item.active_order.items.all %}{{ i.quantity }}x {{ i.name_snapshot }}{% if not forloop.last %}, {% endif %}{% endfor %}">
+                {% for i in item.active_order.items.all %}{{ i.quantity }}x {{ i.name_snapshot }}{% if not forloop.last %}, {% endif %}{% empty %}Sin platillos agregados{% endfor %}
+              </div>
+            {% else %}
+              <div>
+                <i class="bi bi-cup-hot d-block mb-1" aria-hidden="true"></i>
+                Sin comanda abierta
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="table-actions">
+            <a href="{% url 'restaurant_table_pos' slug=restaurant.slug table_number=item.table.number %}" class="btn btn-ink btn-sm">
+              <i class="bi bi-receipt" aria-hidden="true"></i><span>Comanda</span>
+            </a>
+            <button type="button" class="btn btn-soft btn-icon btn-sm" data-bs-toggle="modal" data-bs-target="#qrModal-{{ item.table.number }}" title="Ver QR" aria-label="Ver QR de la Mesa N°{{ item.table.number }}">
+              <i class="bi bi-qr-code" aria-hidden="true"></i>
+            </button>
+            <a href="{% url 'restaurant_table_qr' slug=restaurant.slug table_number=item.table.number %}" target="_blank" rel="noopener" class="btn btn-soft btn-icon btn-sm" title="Imprimir QR" aria-label="Imprimir QR de la Mesa N°{{ item.table.number }}">
+              <i class="bi bi-printer" aria-hidden="true"></i>
+            </a>
+            <a href="{{ item.guest_path }}" target="_blank" rel="noopener" class="btn btn-soft btn-icon btn-sm" title="Ver lo que ve el comensal" aria-label="Ver vista del comensal de la Mesa N°{{ item.table.number }}">
+              <i class="bi bi-phone" aria-hidden="true"></i>
+            </a>
+          </div>
+        </article>
+
+        <div class="modal fade" id="qrModal-{{ item.table.number }}" tabindex="-1" aria-labelledby="qrModalLabel-{{ item.table.number }}" aria-hidden="true">
+          <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h2 class="modal-title" id="qrModalLabel-{{ item.table.number }}"><i class="bi bi-qr-code-scan" aria-hidden="true"></i>QR de la Mesa N°{{ item.table.number }}</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+              </div>
+              <div class="modal-body text-center">
+                <div class="d-inline-block p-3 bg-white border rounded-4 mb-3">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&amp;data={{ item.guest_url|urlencode }}" alt="Código QR de la Mesa {{ item.table.number }}" class="img-fluid" width="220" height="220" loading="lazy">
+                </div>
+                <p class="text-muted small mb-3">Escanéalo con la cámara del celular para abrir el menú y pagar la cuenta.</p>
+                <div class="input-group input-group-sm mb-3">
+                  <input type="text" class="form-control text-center" value="{{ item.guest_url }}" readonly aria-label="Enlace de la mesa">
+                  <button class="btn btn-soft" type="button" data-copy="{{ item.guest_url }}"><i class="bi bi-clipboard" aria-hidden="true"></i><span>Copiar</span></button>
+                </div>
+                <div class="d-grid gap-2">
+                  <a href="{% url 'restaurant_table_qr' slug=restaurant.slug table_number=item.table.number %}" target="_blank" rel="noopener" class="btn btn-ink"><i class="bi bi-printer" aria-hidden="true"></i><span>Imprimir sticker</span></a>
+                  <a href="{{ item.guest_path }}" target="_blank" rel="noopener" class="btn btn-soft"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span>Abrir vista del comensal</span></a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="panel empty">
+      <span class="empty-icon"><i class="bi bi-grid-3x3-gap" aria-hidden="true"></i></span>
+      <h3>Aún no hay mesas</h3>
+      <p>Agrega tu primera mesa para generar su código QR y empezar a registrar comandas.</p>
+      <button type="button" class="btn btn-brand" data-bs-toggle="modal" data-bs-target="#addTableModal">
+        <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Agregar mesa</span>
+      </button>
+    </div>
+  {% endif %}
+</section>
+
+<div class="row g-4">
+  <section class="col-xl-7" aria-labelledby="pagos-titulo">
+    <div class="panel h-100">
+      <div class="panel-head">
+        <h2 id="pagos-titulo"><i class="bi bi-cash-stack text-danger me-2" aria-hidden="true"></i>Pagos recientes</h2>
+      </div>
+      {% if recent_payments %}
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Mesa</th>
+                <th scope="col">Cliente</th>
+                <th scope="col">Método</th>
+                <th scope="col" class="text-end">Subtotal</th>
+                <th scope="col" class="text-end">Propina</th>
+                <th scope="col" class="text-end">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in recent_payments %}
+                <tr>
+                  <td><span class="chip chip--dark">Mesa {{ p.order.table.number }}</span></td>
+                  <td class="fw-semibold">{{ p.payer_name|default:"Comensal" }}</td>
+                  <td>
+                    {% if p.payment_method_label == 'apple_pay' %}
+                      <span class="chip"><i class="bi bi-apple" aria-hidden="true"></i>Apple Pay</span>
+                    {% elif p.payment_method_label == 'google_pay' %}
+                      <span class="chip"><i class="bi bi-google" aria-hidden="true"></i>Google Pay</span>
+                    {% else %}
+                      <span class="chip"><i class="bi bi-credit-card" aria-hidden="true"></i>Tarjeta</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-muted num">${{ p.subtotal_amount|floatformat:"2u" }}</td>
+                  <td class="text-end num tip-plus">+${{ p.tip_amount|floatformat:"2u" }}</td>
+                  <td class="text-end fw-bold num">${{ p.total_amount|floatformat:"2u" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty">
+          <span class="empty-icon"><i class="bi bi-receipt" aria-hidden="true"></i></span>
+          <p class="mb-0">Cuando un comensal pague desde su celular, el cobro aparecerá aquí.</p>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="col-xl-5" aria-labelledby="platillos-titulo">
+    <div class="panel h-100">
+      <div class="panel-head">
+        <div>
+          <h2 id="platillos-titulo"><i class="bi bi-hand-thumbs-up-fill text-danger me-2" aria-hidden="true"></i>Platillos mejor calificados</h2>
+        </div>
+      </div>
+      <div class="rank-list">
+        {% for stat in dish_stats %}
+          <div class="rank-item">
+            <div class="rank-top"><span>{{ stat.dish.name }}</span><span class="num">{{ stat.satisfaction_pct }}%</span></div>
+            <div class="rank-bar" role="presentation"><span style="width: {{ stat.satisfaction_pct|unlocalize }}%;"></span></div>
+            <div class="rank-sub">
+              <span class="up"><i class="bi bi-hand-thumbs-up-fill me-1" aria-hidden="true"></i>{{ stat.thumbs_up }}</span>
+              <span class="down"><i class="bi bi-hand-thumbs-down-fill me-1" aria-hidden="true"></i>{{ stat.thumbs_down }}</span>
+              <span class="ms-auto num">${{ stat.dish.price|floatformat:"2u" }} {{ restaurant.currency }}</span>
+            </div>
+          </div>
+        {% empty %}
+          <div class="empty">
+            <span class="empty-icon"><i class="bi bi-chat-heart" aria-hidden="true"></i></span>
+            <p class="mb-0">Los comensales califican cada platillo después de pagar. Sus votos se verán aquí.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="modal fade" id="addTableModal" tabindex="-1" aria-labelledby="addTableModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{% url 'restaurant_table_add' slug=restaurant.slug %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title" id="addTableModalLabel"><i class="bi bi-grid-3x3-gap-fill" aria-hidden="true"></i>Nueva mesa</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label" for="{{ table_form.number.id_for_label }}">Número o nombre de la mesa</label>
+            {{ table_form.number }}
+            <div class="form-text">Por ejemplo: 1, 26, Terraza-1 o VIP.</div>
+          </div>
+          <div class="mb-1">
+            <label class="form-label" for="{{ table_form.label.id_for_label }}">Zona (opcional)</label>
+            {{ table_form.label }}
+            <div class="form-text">Por ejemplo: Terraza, Salón principal o Barra.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Crear mesa</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" action="{% url 'restaurant_settings' slug=restaurant.slug %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h2 class="modal-title" id="settingsModalLabel"><i class="bi bi-gear" aria-hidden="true"></i>Ajustes del restaurante</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-7">
+              <label class="form-label" for="{{ restaurant_form.name.id_for_label }}">Nombre del restaurante</label>
+              {{ restaurant_form.name }}
+            </div>
+            <div class="col-md-5">
+              <label class="form-label" for="{{ restaurant_form.slug.id_for_label }}">Dirección web</label>
+              {{ restaurant_form.slug }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ restaurant_form.tagline.id_for_label }}">Eslogan o tipo de cocina</label>
+              {{ restaurant_form.tagline }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ restaurant_form.address.id_for_label }}">Dirección del local</label>
+              {{ restaurant_form.address }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ restaurant_form.logo_url.id_for_label }}">URL del logotipo</label>
+              {{ restaurant_form.logo_url }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="{{ restaurant_form.cover_image_url.id_for_label }}">URL de la imagen de portada</label>
+              {{ restaurant_form.cover_image_url }}
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ restaurant_form.google_maps_review_url.id_for_label }}">Enlace de reseñas en Google Maps</label>
+              {{ restaurant_form.google_maps_review_url }}
+              <div class="form-text">Los comensales satisfechos recibirán la invitación a reseñar en este enlace.</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-brand"><i class="bi bi-check-lg" aria-hidden="true"></i><span>Guardar ajustes</span></button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

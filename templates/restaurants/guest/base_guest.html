@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#d92d20">
+  <title>{% block title %}{{ restaurant.name }} · PlavPay{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{% static 'css/guest.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="guest-app-body" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}' data-csrf="{{ csrf_token }}">
+  <div class="guest-app-viewport">
+    <a class="g-skip" href="#g-main">Saltar al contenido</a>
+    {% block content %}{% endblock %}
+
+    {% block footer %}
+    <footer class="guest-footer-tag">
+      Cobro en mesa con <strong>PlavPay</strong>
+    </footer>
+    {% endblock %}
+  </div>
+
+  <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
+  <script src="{% static 'js/guest.js' %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

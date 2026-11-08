@@ -1,0 +1,121 @@
+{% extends "restaurants/guest/base_guest.html" %}
+{% load static l10n %}
+
+{% block title %}Menú · {{ restaurant.name }} · Mesa N°{{ table.number }}{% endblock %}
+
+{% block content %}
+<header class="g-header">
+  <a href="{% url 'guest_table_hub' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Volver al inicio de la mesa">
+    <i class="bi bi-chevron-left" aria-hidden="true"></i>
+  </a>
+  <div class="titles">
+    <h1>Menú digital</h1>
+    <div class="sub">Mesa N°{{ table.number }}</div>
+  </div>
+  <a href="{% url 'guest_table_bill' restaurant.slug table.number %}" class="g-icon-btn" aria-label="Ver la cuenta">
+    <i class="bi bi-receipt" aria-hidden="true"></i>
+  </a>
+</header>
+
+<main id="g-main" class="guest-menu-content" data-menu>
+  {% if categories %}
+  <nav class="guest-category-tabs" aria-label="Categorías del menú">
+    {% for cat in categories %}
+      <a href="#cat-{{ cat.id }}" class="guest-cat-pill {% if forloop.first %}active{% endif %}">
+        {{ cat.name }}
+      </a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  {% for cat in categories %}
+    <section id="cat-{{ cat.id }}" class="menu-section" aria-labelledby="cat-title-{{ cat.id }}">
+      <h2 id="cat-title-{{ cat.id }}" class="guest-menu-category-title">{{ cat.name }}</h2>
+
+      {% for item in cat.items.all %}
+        {% if item.is_available %}
+        <article class="guest-dish-card">
+          {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="guest-dish-img" loading="lazy">
+          {% else %}
+            <div class="guest-dish-img" aria-hidden="true">
+              <i class="bi bi-egg-fried"></i>
+            </div>
+          {% endif %}
+
+          <div class="guest-dish-details">
+            <h3 class="guest-dish-title">{{ item.name }}</h3>
+            {% if item.weight_or_volume %}
+              <div class="guest-dish-weight">{{ item.weight_or_volume }}</div>
+            {% endif %}
+            {% if item.description %}
+              <p class="guest-dish-desc">{{ item.description }}</p>
+            {% endif %}
+            <div class="guest-dish-foot">
+              <span class="guest-dish-price num">${{ item.price|unlocalize }} MXN</span>
+
+              <form method="post" action="{% url 'guest_add_item' restaurant.slug table.number item.id %}" hx-post="{% url 'guest_add_item' restaurant.slug table.number item.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'guest_table_menu' restaurant.slug table.number %}">
+                <button type="submit" class="guest-add-btn">
+                  <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Agregar</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </article>
+        {% endif %}
+      {% empty %}
+        <p class="guest-item-empty">No hay platillos en esta categoría.</p>
+      {% endfor %}
+    </section>
+  {% endfor %}
+
+  {% if uncategorized_items %}
+    <section class="menu-section" aria-labelledby="cat-featured">
+      <h2 id="cat-featured" class="guest-menu-category-title">Platillos de la casa</h2>
+      {% for item in uncategorized_items %}
+        <article class="guest-dish-card">
+          {% if item.image_url %}
+            <img src="{{ item.image_url }}" alt="{{ item.name }}" class="guest-dish-img" loading="lazy">
+          {% else %}
+            <div class="guest-dish-img" aria-hidden="true">
+              <i class="bi bi-egg-fried"></i>
+            </div>
+          {% endif %}
+
+          <div class="guest-dish-details">
+            <h3 class="guest-dish-title">{{ item.name }}</h3>
+            {% if item.weight_or_volume %}
+              <div class="guest-dish-weight">{{ item.weight_or_volume }}</div>
+            {% endif %}
+            {% if item.description %}
+              <p class="guest-dish-desc">{{ item.description }}</p>
+            {% endif %}
+            <div class="guest-dish-foot">
+              <span class="guest-dish-price num">${{ item.price|unlocalize }} MXN</span>
+
+              <form method="post" action="{% url 'guest_add_item' restaurant.slug table.number item.id %}" hx-post="{% url 'guest_add_item' restaurant.slug table.number item.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'guest_table_menu' restaurant.slug table.number %}">
+                <button type="submit" class="guest-add-btn">
+                  <i class="bi bi-plus-lg" aria-hidden="true"></i><span>Agregar</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    </section>
+  {% endif %}
+</main>
+
+{% if order_items_count > 0 %}
+<div class="guest-floating-bottom">
+  <a href="{% url 'guest_table_bill' restaurant.slug table.number %}" class="guest-floating-action-btn">
+    <span class="left"><i class="bi bi-receipt-cutoff" aria-hidden="true"></i><span>Ver mi cuenta ({{ order_items_count }} platillo{{ order_items_count|pluralize }})</span></span>
+    <span class="num">${{ order_subtotal|unlocalize }} MXN</span>
+  </a>
+</div>
+{% endif %}
+{% endblock %}

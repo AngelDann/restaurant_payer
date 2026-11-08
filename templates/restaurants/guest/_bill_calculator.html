@@ -1,0 +1,211 @@
+{% load static l10n %}
+
+<div class="guest-split-tabs" role="tablist" aria-label="Cómo dividir la cuenta">
+  <button type="button"
+          class="guest-split-tab-btn {% if split_mode == 'full' %}active{% endif %}"
+          aria-pressed="{% if split_mode == 'full' %}true{% else %}false{% endif %}"
+          hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+          hx-vals='{"split_mode": "full", "tip_percent": "{{ tip_percent }}", "split_count": "{{ split_count }}"}'
+          hx-target="#bill-calculator-container"
+          hx-swap="innerHTML">
+    Cuenta completa
+  </button>
+
+  <button type="button"
+          class="guest-split-tab-btn {% if split_mode == 'equal' %}active{% endif %}"
+          aria-pressed="{% if split_mode == 'equal' %}true{% else %}false{% endif %}"
+          hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+          hx-vals='{"split_mode": "equal", "tip_percent": "{{ tip_percent }}", "split_count": "{% if split_count > 1 %}{{ split_count }}{% else %}2{% endif %}"}'
+          hx-target="#bill-calculator-container"
+          hx-swap="innerHTML">
+    Partes iguales
+  </button>
+
+  <button type="button"
+          class="guest-split-tab-btn {% if split_mode == 'items' %}active{% endif %}"
+          aria-pressed="{% if split_mode == 'items' %}true{% else %}false{% endif %}"
+          hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+          hx-vals='{"split_mode": "items", "tip_percent": "{{ tip_percent }}", "split_count": "{{ split_count }}"}'
+          hx-target="#bill-calculator-container"
+          hx-swap="innerHTML">
+    Elegir platillos
+  </button>
+</div>
+
+{% if split_mode == 'equal' %}
+<div class="guest-equal-counter-card">
+  <div>
+    <div class="lbl">Dividir cuenta entre</div>
+    <div class="val">{{ split_count }} personas</div>
+  </div>
+  <div class="guest-counter-ctrl">
+    <button type="button" class="guest-counter-btn"
+            aria-label="Restar una persona"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "equal", "split_count": "{% if split_count > 2 %}{{ split_count|add:"-1" }}{% else %}2{% endif %}", "tip_percent": "{{ tip_percent }}"}'
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML"
+            {% if split_count <= 2 %}disabled{% endif %}>
+      <i class="bi bi-dash-lg" aria-hidden="true"></i>
+    </button>
+    <b>{{ split_count }}</b>
+    <button type="button" class="guest-counter-btn"
+            aria-label="Sumar una persona"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "equal", "split_count": "{{ split_count|add:"1" }}", "tip_percent": "{{ tip_percent }}"}'
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      <i class="bi bi-plus-lg" aria-hidden="true"></i>
+    </button>
+  </div>
+</div>
+{% endif %}
+
+<div class="guest-items-card">
+  <div class="guest-items-header">
+    {% if split_mode == 'items' %}
+      Selecciona los platillos que vas a pagar
+    {% else %}
+      Resumen de consumo
+    {% endif %}
+  </div>
+
+  {% for it in items %}
+  <div class="guest-item-row">
+    <label class="left" {% if split_mode == 'items' %}for="item-check-{{ it.id }}"{% endif %}>
+      {% if split_mode == 'items' %}
+        <input type="checkbox"
+               id="item-check-{{ it.id }}"
+               name="selected_items"
+               value="{{ it.id }}"
+               class="guest-item-check"
+               {% if it.id in selected_item_ids or not selected_item_ids %}checked{% endif %}
+               hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+               hx-include="#bill-checkout-form"
+               hx-target="#bill-calculator-container"
+               hx-swap="innerHTML">
+      {% endif %}
+      <div>
+        <div class="nm">{{ it.quantity }} × {{ it.name_snapshot }}</div>
+        {% if it.menu_item and it.menu_item.weight_or_volume %}
+          <div class="meta">{{ it.menu_item.weight_or_volume }}</div>
+        {% endif %}
+      </div>
+    </label>
+    <div class="amt">${{ it.line_total|unlocalize }} MXN</div>
+  </div>
+  {% empty %}
+  <div class="guest-item-empty">No hay platillos en la orden actualmente.</div>
+  {% endfor %}
+</div>
+
+<div class="guest-tip-section">
+  <h2 class="guest-tip-title">¿Cuánto te gustaría dejar de propina?</h2>
+
+  <div class="guest-tip-grid">
+    <button type="button"
+            class="guest-tip-card {% if tip_percent == '10' %}active{% endif %}"
+            aria-pressed="{% if tip_percent == '10' %}true{% else %}false{% endif %}"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "{{ split_mode }}", "split_count": "{{ split_count }}", "tip_percent": "10"}'
+            hx-include="#bill-checkout-form"
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      <span class="guest-tip-pct-label">10%</span>
+      <span class="guest-tip-amount-label">${{ tip_10|unlocalize }} MXN</span>
+    </button>
+
+    <button type="button"
+            class="guest-tip-card {% if tip_percent == '15' %}active{% endif %}"
+            aria-pressed="{% if tip_percent == '15' %}true{% else %}false{% endif %}"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "{{ split_mode }}", "split_count": "{{ split_count }}", "tip_percent": "15"}'
+            hx-include="#bill-checkout-form"
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      <span class="guest-tip-pct-label">15%</span>
+      <span class="guest-tip-amount-label">${{ tip_15|unlocalize }} MXN</span>
+    </button>
+
+    <button type="button"
+            class="guest-tip-card {% if tip_percent == '20' %}active{% endif %}"
+            aria-pressed="{% if tip_percent == '20' %}true{% else %}false{% endif %}"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "{{ split_mode }}", "split_count": "{{ split_count }}", "tip_percent": "20"}'
+            hx-include="#bill-checkout-form"
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      <span class="guest-tip-pct-label">20%</span>
+      <span class="guest-tip-amount-label">${{ tip_20|unlocalize }} MXN</span>
+    </button>
+  </div>
+
+  <div class="guest-tip-options-row">
+    <button type="button"
+            class="guest-tip-pill-btn {% if tip_percent == 'custom' %}active{% endif %}"
+            data-toggle="#custom-tip-container"
+            aria-expanded="{% if tip_percent == 'custom' %}true{% else %}false{% endif %}">
+      Otro monto
+    </button>
+
+    <button type="button"
+            class="guest-tip-pill-btn {% if tip_percent == '0' %}active{% endif %}"
+            aria-pressed="{% if tip_percent == '0' %}true{% else %}false{% endif %}"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "{{ split_mode }}", "split_count": "{{ split_count }}", "tip_percent": "0"}'
+            hx-include="#bill-checkout-form"
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      Sin propina
+    </button>
+  </div>
+
+  <div id="custom-tip-container" class="guest-custom-tip-box" {% if tip_percent != 'custom' %}hidden{% endif %}>
+    <input type="number"
+           inputmode="decimal"
+           step="1"
+           min="0"
+           id="custom-tip-input-field"
+           name="custom_tip"
+           aria-label="Monto de propina en MXN"
+           placeholder="Monto en MXN, por ejemplo 50"
+           value="{{ custom_tip_input|default:'' }}"
+           class="guest-custom-tip-input">
+    <button type="button"
+            class="guest-submit-feedback-btn"
+            hx-post="{% url 'guest_bill_calculate' restaurant.slug table.number %}"
+            hx-vals='{"split_mode": "{{ split_mode }}", "split_count": "{{ split_count }}", "tip_percent": "custom"}'
+            hx-include="#bill-checkout-form, #custom-tip-input-field"
+            hx-target="#bill-calculator-container"
+            hx-swap="innerHTML">
+      Aplicar
+    </button>
+  </div>
+</div>
+
+<div class="guest-total-summary">
+  <div class="guest-summary-row">
+    <span>Subtotal{% if split_mode == 'equal' %} ({{ split_count }} personas){% endif %}</span>
+    <span>${{ base_subtotal|unlocalize }} MXN</span>
+  </div>
+  <div class="guest-summary-row">
+    <span>Propina ({% if tip_percent == 'custom' %}personalizada{% else %}{{ tip_percent }}%{% endif %})</span>
+    <span>${{ tip_amount|unlocalize }} MXN</span>
+  </div>
+  <div class="guest-summary-row total-bold">
+    <span>Total a pagar</span>
+    <span>${{ total_amount|unlocalize }} MXN</span>
+  </div>
+</div>
+
+<input type="hidden" name="split_mode" value="{{ split_mode }}">
+<input type="hidden" name="split_count" value="{{ split_count }}">
+<input type="hidden" name="tip_percentage" value="{{ tip_percent }}">
+<input type="hidden" name="tip_amount" value="{{ tip_amount|unlocalize }}">
+<input type="hidden" name="subtotal_amount" value="{{ base_subtotal|unlocalize }}">
+<input type="hidden" name="total_amount" value="{{ total_amount|unlocalize }}">
+{% if split_mode == 'items' %}
+  {% for sid in selected_item_ids %}
+    <input type="hidden" name="selected_items" value="{{ sid }}">
+  {% endfor %}
+{% endif %}

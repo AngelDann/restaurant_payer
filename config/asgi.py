@@ -13,7 +13,10 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
 django_asgi_app = get_asgi_application()
 
-from apps.ai_chat.routing import websocket_urlpatterns  # noqa: E402
+from apps.ai_chat.routing import websocket_urlpatterns as ai_ws_patterns  # noqa: E402
+from apps.restaurants.routing import websocket_urlpatterns as restaurant_ws_patterns  # noqa: E402
+
+websocket_urlpatterns = [*ai_ws_patterns, *restaurant_ws_patterns]
 
 application = ProtocolTypeRouter(
     {
